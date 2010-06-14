@@ -148,5 +148,7 @@ public class GsmAlphabetTest extends BaseTestCase {
 	public void testSplitText() {
 		assertEquals("Empty text should be split into one part (unported).", 1, GsmAlphabet.splitText("", false).length);
 		assertEquals("Empty text should be split into one part (ported).", 1, GsmAlphabet.splitText("", true).length);
+		assertEquals("There is a new form available: État Vaccinal", 1, GsmAlphabet.splitText("", false).length);
+		assertEquals("There is a new form available: Nouveau Né", 1, GsmAlphabet.splitText("", true).length);
 	}
 }

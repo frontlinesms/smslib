@@ -97,7 +97,13 @@ public enum GsmAlphabetBaseTable implements GsmCharacterTable {
 	}
 	
 	public char getCharacter(int byteValue) {
-		return characters[byteValue];
+		if(byteValue < 0 || byteValue >= characters.length) {
+			// Should return SPACE character for characters we can't cope with according to SPEC.  Ideally we wouldn't be here
+			// if there were unrecognized characters, but you never know.
+			return ' ';
+		} else {
+			return characters[byteValue];
+		}
 	}
 	
 	public int getByteValue(char character) {
