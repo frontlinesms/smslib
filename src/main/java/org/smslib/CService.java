@@ -1103,8 +1103,8 @@ public class CService {
 			synchronized (_SYNC_) {
 				refNo = atHandler.sendMessage(pduLength, pdu, null, null);
 			}
+			message.setRefNo(refNo);
 			if (refNo >= 0) {
-				message.setRefNo(refNo);
 				message.setDispatchDate();
 				deviceInfo.getStatistics().incTotalOut();
 			} else if (refNo == -2) {
