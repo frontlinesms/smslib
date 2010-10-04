@@ -31,7 +31,7 @@ import org.smslib.handler.*;
 abstract public class AbstractATHandler {
 	/** The value returned by {@link #sendMessage(int, String, String, String)} instead of a valid
 	 * SMSC reference number when sending a message failed. */
-	public static final int SMSC_REF_NUMBER_SEND_FAILED = -1;
+	protected static final int SMSC_REF_NUMBER_SEND_FAILED = -1;
 	
 	protected CSerialDriver serialDriver;
 

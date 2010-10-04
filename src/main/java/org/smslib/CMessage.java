@@ -47,6 +47,8 @@ public abstract class CMessage {
 //> INSTANCE PROPERTIES
 	/** The type of message, from {@link MessageType}.  TODO {@link MessageType} should probably be an enum. */
 	protected final int type;
+	/** For a successfully sent message, the SMSC reference number of a sent message.  For a message which failed,
+	 * this will have a value less than zero, such as {@link AbstractATHandler#SMSC_REF_NUMBER_SEND_FAILED} */
 	protected int refNo;
 	protected String id;
 	/**

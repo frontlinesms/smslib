@@ -33,6 +33,8 @@ import java.util.regex.Pattern;
 import org.apache.log4j.Logger;
 
 public class CSerialDriver implements SerialPortEventListener {
+	/** Prints to console a selection of full lines read and written to the serial port. */
+	private static final boolean TRACE_IO = false;
 	private static final boolean DEBUG = false;
 	
 	private static final int DELAY = 500;
@@ -42,8 +44,6 @@ public class CSerialDriver implements SerialPortEventListener {
 	private static final int RECV_TIMEOUT = 30 * 1000;
 
 	private static final int BUFFER_SIZE = 16384;
-	
-	private static final boolean TRACE_EXTRA_SOP_IO_EXCEPTION = false;
 	
 	/** The name of the serial port this conencts to. */
 	private String port;
@@ -180,7 +180,7 @@ public class CSerialDriver implements SerialPortEventListener {
 	}
 
 	public void clearBufferCheckCMTI() throws IOException {
-		StringBuffer buffer = new StringBuffer(BUFFER_SIZE);
+		StringBuilder buffer = new StringBuilder(BUFFER_SIZE);
 
 		if (log != null) log.debug("SerialDriver(): clearBufferCheckCMTI() called");
 		while (dataAvailable()) {
@@ -207,8 +207,8 @@ public class CSerialDriver implements SerialPortEventListener {
 	}
 
 	public void send(String s) throws IOException {
-		if (log != null) log.debug("TE: " + formatLog(new StringBuffer(s)));
-		if(TRACE_EXTRA_SOP_IO_EXCEPTION) System.out.println("> " + s);
+		if (log != null) log.debug("TE: " + formatLog(new StringBuilder(s)));
+		if(TRACE_IO) System.out.println("> " + s);
 		for (int i = 0; i < s.length(); i++) {
 			outStream.write((byte) s.charAt(i));
 		}
@@ -243,20 +243,16 @@ public class CSerialDriver implements SerialPortEventListener {
 	}
 
 	public String getResponse() throws IOException {
-		final int RETRIES = 3;
-		StringBuffer buffer;
-		String response;
-		int c, retry;
+		final int MAX_RETRIES = 3;
+		int retry = 0;
+		final StringBuilder buffer = new StringBuilder(BUFFER_SIZE);
 
-		retry = 0;
-		buffer = new StringBuffer(BUFFER_SIZE);
-
-		while (retry < RETRIES) {
+		while (retry < MAX_RETRIES) {
 			try {
 				while (true) {
 					while (true) {
 						if (stopFlag) return "+ERROR:\r\n";
-						c = inStream.read();
+						int c = inStream.read();
 						if (c == -1) {
 							buffer.delete(0, buffer.length());
 							break;
@@ -264,7 +260,7 @@ public class CSerialDriver implements SerialPortEventListener {
 						buffer.append((char) c);
 						if ((c == 0x0a) || (c == 0x0d)) break;
 					}
-					response = buffer.toString();
+					String response = buffer.toString();
 
 					if(response.length() == 0
 							|| response.matches("\\s*[\\p{ASCII}]*\\s+OK\\s")
@@ -280,10 +276,10 @@ public class CSerialDriver implements SerialPortEventListener {
 						continue;
 					}
 				}
-				retry = RETRIES;
+				retry = MAX_RETRIES;
 			} catch (IOException e) {
 				e.printStackTrace();
-				if (retry < RETRIES)
+				if (retry < MAX_RETRIES)
 				{
 					try { Thread.sleep(DELAY); } catch(InterruptedException ex) {}
 					++retry;
@@ -302,18 +298,18 @@ public class CSerialDriver implements SerialPortEventListener {
 
 				if (srv.getCallHandler() != null) srv.getCallHandler().received(srv, new CIncomingCall(phone, new java.util.Date()));
 
-				response = buffer.toString();
+				String response = buffer.toString();
 				response = response.replaceAll("\\s*RING\\s+[\\p{ASCII}]CLIP[[\\p{Alnum}][\\p{Punct}] ]+\\s\\s", "");
 				return response;
 			} else return buffer.toString();
 		} else {
-			String response2 = buffer.toString();
-			if(TRACE_EXTRA_SOP_IO_EXCEPTION) System.out.println("< " + response2);
-			return response2;
+			String response = buffer.toString();
+			if(TRACE_IO) System.out.println("< " + response);
+			return response;
 		}
 	}
 
-	private String formatLog(StringBuffer s) {
+	private String formatLog(StringBuilder s) {
 		StringBuffer response = new StringBuffer();
 		for (int i = 0; i < s.length(); i++) {
 			switch (s.charAt(i)) {
