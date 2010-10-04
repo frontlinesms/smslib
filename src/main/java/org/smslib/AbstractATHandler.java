@@ -89,7 +89,7 @@ abstract public class AbstractATHandler {
 	/**
 	 * Check the supplied response to the PIN AT command to see if a PIN2 is required.
 	 * @param commandResponse
-	 * @return <code>true</code> if a PIN is being waited for; <code>false</code> otherwise
+	 * @return <code>true</code> if a PIN2 is being waited for; <code>false</code> otherwise
 	 */
 	protected abstract boolean isWaitingForPin2(String commandResponse);
 
@@ -288,7 +288,7 @@ abstract public class AbstractATHandler {
 	
 	
 	
-	protected int getProtocol() {
+	protected CService.Protocol getProtocol() {
 		return CService.Protocol.PDU;
 	}
 }

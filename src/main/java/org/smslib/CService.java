@@ -49,11 +49,11 @@ public class CService {
 	private final Object _SYNC_ = new Object();
 
 	/** Holds values representing the modem protocol used. */
-	public static class Protocol {
+	public enum Protocol {
 		/** PDU protocol. */
-		public static final int PDU = 0;
+		PDU,
 		/** TEXT protocol. */
-		public static final int TEXT = 1;
+		TEXT;
 	}
 
 	/**
@@ -105,7 +105,7 @@ public class CService {
 
 	private int receiveMode;
 
-	private int protocol;
+	private Protocol protocol;
 
 	private AbstractATHandler atHandler;
 
@@ -462,27 +462,20 @@ public class CService {
 
 	/**
 	 * Sets the protocol to be used.
-	 * <p>
-	 * The default protocol is PDU. If you want to change it, you must call this method after constructing the
+	 * <p>The default protocol is PDU. If you want to change it, you must call this method after constructing the
 	 * CService object and before connecting. Otherwise, you will get an exception.
-	 * 
-	 * @param protocol
-	 *            The protocol to be used.
-	 * @see CService#getProtocol()
-	 * @see CService.Protocol
+	 * @param protocol The protocol to be used.
 	 */
-	public void setProtocol(int protocol) {
+	public void setProtocol(CService.Protocol protocol) {
 		if (isConnected()) throw new RuntimeException("Cannot change protocol while connected!");
 		else this.protocol = protocol;
 	}
 
 	/**
 	 * Returns the message protocol in use by this.
-	 * 
 	 * @return The protocol use.
-	 * @see CService.Protocol
 	 */
-	public int getProtocol() {
+	public CService.Protocol getProtocol() {
 		return protocol;
 	}
 
@@ -562,11 +555,11 @@ public class CService {
 					if (atHandler.storageLocations.length() == 0) atHandler.getStorageLocations();
 					log.info("MEM: Storage Locations Found: " + atHandler.storageLocations);
 					switch (protocol) {
-						case Protocol.PDU:
+						case PDU:
 							log.info("PROT: Using PDU protocol.");
 							if (!atHandler.setPduMode()) throw new NoPduSupportException();
 							break;
-						case Protocol.TEXT:
+						case TEXT:
 							log.info("PROT: Using TEXT protocol.");
 							if (!atHandler.setTextMode()) throw new NoTextSupportException();
 							break;
@@ -679,10 +672,10 @@ public class CService {
 	 */
 	public void readMessages(LinkedList<CIncomingMessage> messageList, MessageClass messageClass) throws IOException, SMSLibDeviceException {
 		switch (protocol) {
-			case Protocol.PDU:
+			case PDU:
 				readMessages_PDU(messageList, messageClass);
 				break;
-			case Protocol.TEXT:
+			case TEXT:
 				readMessages_TEXT(messageList, messageClass);
 				break;
 		}
@@ -1036,10 +1029,10 @@ public class CService {
 
 	public void sendMessage(COutgoingMessage message) throws Exception {
 		switch (protocol) {
-			case Protocol.PDU:
+			case PDU:
 				sendMessage_PDU(message);
 				break;
-			case Protocol.TEXT:
+			case TEXT:
 				sendMessage_TEXT(message);
 				break;
 		}
@@ -1063,10 +1056,10 @@ public class CService {
 	// FIXME don't throw "Exception"
 	public void sendMessages(List<COutgoingMessage> messageList) throws Exception {
 		switch (protocol) {
-			case Protocol.PDU:
+			case PDU:
 				sendMessages_PDU(messageList);
 				break;
-			case Protocol.TEXT:
+			case TEXT:
 				sendMessages_TEXT(messageList);
 				break;
 		}

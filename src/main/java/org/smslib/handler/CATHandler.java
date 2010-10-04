@@ -263,12 +263,12 @@ public class CATHandler extends AbstractATHandler {
 	/** Sends an SMS message and retrieves the SMSC reference number assigned to it. */
 	protected int sendMessage(int size, String pdu, String phone, String text) throws IOException, NoResponseException, UnrecognizedHandlerProtocolException {
 		int smscReferenceNumber;
-		int messageProtocol = srv.getProtocol();
+		CService.Protocol messageProtocol = srv.getProtocol();
 		switch(messageProtocol) {
-			case CService.Protocol.PDU:
+			case PDU:
 				smscReferenceNumber = sendMessage_PDU(size, pdu);
 				break;
-			case CService.Protocol.TEXT:
+			case TEXT:
 				smscReferenceNumber = sendMessage_TEXT(phone, text);
 				break;
 			default:
@@ -298,11 +298,11 @@ public class CATHandler extends AbstractATHandler {
 	{
 		if(TRACE) System.out.println("CATHandler.listMessages() : " + this.getClass().getSimpleName());
 		
-		int messageProtocol = srv.getProtocol();
+		CService.Protocol messageProtocol = srv.getProtocol();
 		switch (messageProtocol) {
-			case CService.Protocol.PDU:
+			case PDU:
 				return serialSendReceive("AT+CMGL=" + messageClass.getPduModeId());
-			case CService.Protocol.TEXT:
+			case TEXT:
 				return serialSendReceive("AT+CMGL=\"" + messageClass.getTextId() + "\"");
 			default:
 				throw new UnrecognizedHandlerProtocolException(messageProtocol);

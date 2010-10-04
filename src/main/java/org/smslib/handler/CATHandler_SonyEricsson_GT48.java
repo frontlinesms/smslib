@@ -39,10 +39,10 @@ public class CATHandler_SonyEricsson_GT48 extends CATHandler_SonyEricsson
 		String response;
 		int refNo;
 
-		int messageProtocol = srv.getProtocol();
+		CService.Protocol messageProtocol = srv.getProtocol();
 		switch (messageProtocol)
 		{
-			case CService.Protocol.PDU:
+			case PDU:
 				errorRetries = 0;
 				while (true)
 				{
@@ -89,7 +89,7 @@ public class CATHandler_SonyEricsson_GT48 extends CATHandler_SonyEricsson
 					else refNo = -1;
 				}
 				break;
-			case CService.Protocol.TEXT:
+			case TEXT:
 				refNo = super.sendMessage(size, pdu, phone, text);
 				break;
 			default:
