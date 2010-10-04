@@ -97,6 +97,15 @@ public class CATHandler extends AbstractATHandler {
 	protected boolean isWaitingForPin(String commandResponse) {
 		return commandResponse.contains("SIM PIN");
 	}
+	
+	/**
+	 * Added due to confusion about the implementation of PIN checking in {@link CService}
+	 * @author alex@frontlinesms.com
+	 */
+	@Override
+	protected boolean isWaitingForPin2(String commandResponse) {
+		return commandResponse.contains("SIM PIN2");
+	}
 
 	@Override
 	protected boolean isWaitingForPuk(String commandResponse) {

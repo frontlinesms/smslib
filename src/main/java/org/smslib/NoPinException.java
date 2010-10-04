@@ -23,11 +23,7 @@ package org.smslib;
 
 /**
  * Exception thrown when the GSM modem requires a PIN but no PIN is defined.
- * 
  * @see CService#setSimPin(String)
  */
-
-public class NoPinException extends SMSLibDeviceException
-{
-	private static final long serialVersionUID = 1L;
+public class NoPinException extends SMSLibDeviceException {
 }

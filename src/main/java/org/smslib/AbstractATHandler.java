@@ -86,6 +86,12 @@ abstract public class AbstractATHandler {
 	 * @return <code>true</code> if a PIN is being waited for; <code>false</code> otherwise
 	 */
 	protected abstract boolean isWaitingForPin(String commandResponse);
+	/**
+	 * Check the supplied response to the PIN AT command to see if a PIN2 is required.
+	 * @param commandResponse
+	 * @return <code>true</code> if a PIN is being waited for; <code>false</code> otherwise
+	 */
+	protected abstract boolean isWaitingForPin2(String commandResponse);
 
 	/**
 	 * Check the supplied response to the PIN AT command to see if a PUK is required.

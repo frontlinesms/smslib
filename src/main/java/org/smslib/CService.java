@@ -93,10 +93,15 @@ public class CService {
 	private static final String VALUE_NOT_REPORTED = "* N/A *";
 	/** {@link TimeZone} for UTC.  This is used to standardise times. */
 	private static final TimeZone TIMEZONE_UTC = TimeZone.getTimeZone("GMT");
-
+	/** The SMSC number for this device.  If set <code>null</code>, a blank value will be used.  This usually allows a device to determine
+	 * the SMSC number for itself. */
 	private String smscNumber;
-
-	private String simPin, simPin2;
+	/** The PIN number to set for this device, or <code>null</code> if none has been supplied. */
+	private String simPin;
+	/** The 2nd PIN for the SIM.  This usually unlocks advanced SIM features. */
+	private String simPin2;
+	/** if <code>true</code>, {@link #connect()} will throw an exception if asked for SIM PIN2 and {@link #simPin2} is null. */
+	boolean throwExceptionOnMissingPin2;
 
 	private int receiveMode;
 
@@ -527,10 +532,21 @@ public class CService {
 						if (getSimPin() == null) throw new NoPinException();
 						if (!atHandler.enterPin(getSimPin())) throw new InvalidPinException();
 						
-						// If we're still waiting for the PIN, we made need the 2nd PIN number
-						String secondPinResponse = atHandler.getPinResponse();
-						if (getSimPin2() == null) throw new NoPinException();
-						if (!atHandler.enterPin(getSimPin2())) throw new InvalidPin2Exception();
+						pinResponse = atHandler.getPinResponse();
+					}
+
+					// If we're still waiting for the PIN, we made need the 2nd PIN number
+					if(atHandler.isWaitingForPin2(pinResponse)) {
+						String pin2 = getSimPin2();
+						if (pin2 == null) {
+							if(throwExceptionOnMissingPin2) {
+								throw new NoPin2Exception();
+							}
+						} else {
+							if (!atHandler.enterPin(pin2)) throw new InvalidPin2Exception();
+						}
+
+						pinResponse = atHandler.getPinResponse();
 					}
 					
 					if(atHandler.isWaitingForPuk(pinResponse)) {
@@ -1099,11 +1115,15 @@ public class CService {
 				}
 			}
 			
+			// Get the reference number for the sent message.  For a message that is successfully sent, this will
+			// be set by the SMSC; for a failed message, this will be some value less than zero.  For this reason,
+			// we must update the reference number of the message object even if it is < 0
 			int refNo;
 			synchronized (_SYNC_) {
 				refNo = atHandler.sendMessage(pduLength, pdu, null, null);
 			}
 			message.setRefNo(refNo);
+			
 			if (refNo >= 0) {
 				message.setDispatchDate();
 				deviceInfo.getStatistics().incTotalOut();
