@@ -42,6 +42,9 @@ public class CSerialDriver implements SerialPortEventListener {
 	private static final int RECV_TIMEOUT = 30 * 1000;
 
 	private static final int BUFFER_SIZE = 16384;
+	
+	private static final boolean TRACE_EXTRA_SOP_IO_EXCEPTION = false;
+	
 	/** The name of the serial port this conencts to. */
 	private String port;
 	
@@ -205,6 +208,7 @@ public class CSerialDriver implements SerialPortEventListener {
 
 	public void send(String s) throws IOException {
 		if (log != null) log.debug("TE: " + formatLog(new StringBuffer(s)));
+		if(TRACE_EXTRA_SOP_IO_EXCEPTION) System.out.println("> " + s);
 		for (int i = 0; i < s.length(); i++) {
 			outStream.write((byte) s.charAt(i));
 		}
@@ -302,7 +306,11 @@ public class CSerialDriver implements SerialPortEventListener {
 				response = response.replaceAll("\\s*RING\\s+[\\p{ASCII}]CLIP[[\\p{Alnum}][\\p{Punct}] ]+\\s\\s", "");
 				return response;
 			} else return buffer.toString();
-		} else return buffer.toString();
+		} else {
+			String response2 = buffer.toString();
+			if(TRACE_EXTRA_SOP_IO_EXCEPTION) System.out.println("< " + response2);
+			return response2;
+		}
 	}
 
 	private String formatLog(StringBuffer s) {
