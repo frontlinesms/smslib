@@ -24,11 +24,11 @@ package org.smslib.handler;
 import java.io.IOException;
 
 import org.smslib.CService;
+import org.smslib.CService.MessageClass;
 import org.smslib.NoResponseException;
 import org.smslib.SMSLibDeviceException;
 import org.smslib.UnrecognizedHandlerProtocolException;
-import org.smslib.CService.MessageClass;
-import org.smslib.CService.Protocol;
+
 import org.smslib.stk.StkRequest;
 import org.smslib.stk.StkResponse;
 
