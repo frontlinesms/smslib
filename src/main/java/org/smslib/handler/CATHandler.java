@@ -25,6 +25,9 @@ import java.io.IOException;
 import java.util.*;
 import org.smslib.*;
 import org.smslib.CService.MessageClass;
+import org.smslib.stk.NoStkSupportException;
+import org.smslib.stk.StkRequest;
+import org.smslib.stk.StkResponse;
 import org.apache.log4j.*;
 
 public class CATHandler extends AbstractATHandler {
@@ -33,6 +36,15 @@ public class CATHandler extends AbstractATHandler {
 	 * FIXME remove this and disable it
 	 */
 	private static final boolean TRACE = false;
+	/** The value returned by {@link #sendMessage(int, String, String, String)} instead of a valid
+	 * SMSC reference number when sending a message failed. */
+	protected static final int SMSC_REF_NUMBER_SEND_FAILED = -1;
+	
+	protected static final int DELAY_AT = 200;
+	protected static final int DELAY_RESET = 20000;
+	protected static final int DELAY_PIN = 12000;
+	protected static final int DELAY_CMD_MODE = 1000;
+	protected static final int DELAY_CMGS = 300;
 	
 	/** Character used to terminate a line after an AT command */
 	protected static final String END_OF_LINE = "\r";
@@ -49,8 +61,21 @@ public class CATHandler extends AbstractATHandler {
 	/** AT Command to retrieve the battery level */
 	private static final String AT_BATTERY = "AT+CBC";
 
+//> INSTANCE VARIABLES
+	protected CSerialDriver serialDriver;
+	protected Logger log;
+	protected String storageLocations = "";
+	protected CService srv;
+
+//> CONSTRUCTORS
 	public CATHandler(CSerialDriver serialDriver, Logger log, CService srv) {
-		super(serialDriver, log, srv);
+		this.serialDriver = serialDriver;
+		this.log = log;
+		this.srv = srv;
+	}
+	
+	protected String getStorageLocations() {
+		return this.storageLocations;
 	}
 
 	protected void setStorageLocations(String loc) {
@@ -88,12 +113,10 @@ public class CATHandler extends AbstractATHandler {
 		return response.matches("\\s*[\\p{ASCII}]*\\s+OK\\s");
 	}
 	
-	@Override
 	protected String getPinResponse() throws IOException {
 		return serialSendReceive("AT+CPIN?");
 	}
 	
-	@Override
 	protected boolean isWaitingForPin(String commandResponse) {
 		return commandResponse.contains("SIM PIN");
 	}
@@ -102,12 +125,10 @@ public class CATHandler extends AbstractATHandler {
 	 * Added due to confusion about the implementation of PIN checking in {@link CService}
 	 * @author alex@frontlinesms.com
 	 */
-	@Override
 	protected boolean isWaitingForPin2(String commandResponse) {
 		return commandResponse.contains("SIM PIN2");
 	}
 
-	@Override
 	protected boolean isWaitingForPuk(String commandResponse) {
 		return commandResponse.contains("SIM PUK");
 	}
@@ -294,8 +315,7 @@ public class CATHandler extends AbstractATHandler {
 		return Integer.parseInt(bob.toString());		
 	}
 
-	protected String listMessages(MessageClass messageClass) throws IOException, UnrecognizedHandlerProtocolException, SMSLibDeviceException
-	{
+	protected String listMessages(MessageClass messageClass) throws IOException, UnrecognizedHandlerProtocolException, SMSLibDeviceException {
 		if(TRACE) System.out.println("CATHandler.listMessages() : " + this.getClass().getSimpleName());
 		
 		CService.Protocol messageProtocol = srv.getProtocol();
@@ -308,11 +328,8 @@ public class CATHandler extends AbstractATHandler {
 				throw new UnrecognizedHandlerProtocolException(messageProtocol);
 		}
 	}
-	
-	
 
-	protected boolean deleteMessage(int memIndex, String memLocation) throws IOException
-	{
+	protected boolean deleteMessage(int memIndex, String memLocation) throws IOException {
 		if (!setMemoryLocation(memLocation)) throw new RuntimeException("CATHandler.deleteMessage() : Memory Location not found!!!");
 		String response = serialSendReceive(CUtils.replace("AT+CMGD={1}", "{1}", "" + memIndex));
 		return response.matches("\\s+OK\\s+");
@@ -326,7 +343,8 @@ public class CATHandler extends AbstractATHandler {
 		return serialSendReceive(AT_NETWORK_REGISTRATION);
 	}
 
-	protected void getStorageLocations() throws IOException {
+	/** @see AbstractATHandler#getStorageLocations() */
+	protected void initStorageLocations() throws IOException {
 		String response = serialSendReceive("AT+CPMS?");
 		if(response.contains("+CPMS:")) {
 			response = response.replaceAll("\\s*\\+CPMS:\\s*", "");
@@ -392,14 +410,24 @@ public class CATHandler extends AbstractATHandler {
 		}
 	}
 	
-	@Override
 	/** This method should be overridden by AT Handlers that only support sending. */
 	protected boolean supportsReceive() {
 		return true;
 	}
 
-	@Override
 	public boolean supportsUcs2SmsSending() {
 		return true;
+	}
+
+	protected CService.Protocol getProtocol() {
+		return CService.Protocol.PDU;
+	}
+
+	public boolean supportsStk() {
+		return false;
+	}
+
+	public StkResponse stkRequest(StkRequest request, String... variables) throws SMSLibDeviceException {
+		throw new NoStkSupportException();
 	}
 }

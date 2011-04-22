@@ -49,9 +49,9 @@ public class CATHandler_Nokia_S40_3ed extends CATHandler {
 	}
 
 //> ACCESSORS
-	/** @see CATHandler#getStorageLocations() */	
+	/** @see CATHandler#initStorageLocations() */	
 	@Override
-	protected void getStorageLocations() throws IOException {
+	protected void initStorageLocations() {
 		LOG.warn("Receiving SMS not currently supported");
 	}
 

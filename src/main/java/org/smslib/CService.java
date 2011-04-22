@@ -35,6 +35,7 @@ import java.util.TooManyListenersException;
 import serial.*;
 
 import org.apache.log4j.Logger;
+import org.smslib.handler.CATHandlerUtils;
 import org.smslib.sms.SmsMessageEncoding;
 import org.smslib.util.GsmAlphabet;
 import org.smslib.util.HexUtils;
@@ -162,7 +163,7 @@ public class CService {
 		log.info("Using port: " + port + " @ " + baud + " baud.");
 		
 		try {
-			atHandler = AbstractATHandler.load(serialDriver, log, this, gsmDeviceManufacturer, gsmDeviceModel, catHandlerAlias);
+			atHandler = CATHandlerUtils.load(serialDriver, log, this, gsmDeviceManufacturer, gsmDeviceModel, catHandlerAlias);
 			log.info("Using " + atHandler.getClass().getName());
 		} catch (Exception ex) {
 			log.fatal("CANNOT INITIALIZE HANDLER (" + ex.getMessage() + ")");
@@ -553,8 +554,8 @@ public class CService {
 					atHandler.echoOff();
 					waitForNetworkRegistration();
 					atHandler.setVerboseErrors();
-					if (atHandler.storageLocations.length() == 0) atHandler.getStorageLocations();
-					log.info("MEM: Storage Locations Found: " + atHandler.storageLocations);
+					if (atHandler.getStorageLocations().length() == 0) atHandler.initStorageLocations();
+					log.info("MEM: Storage Locations Found: " + atHandler.getStorageLocations());
 					switch (protocol) {
 						case PDU:
 							log.info("PROT: Using PDU protocol.");
@@ -712,7 +713,7 @@ public class CService {
 	private void createMessage(LinkedList<CIncomingMessage> messageList, String pdu, int memoryLocation, int memIndex) throws MessageDecodeException {
 		if (isIncomingMessage(pdu)) {
 			log.info("PDU appears to be an incoming message.  Processing accordingly.");
-			CIncomingMessage msg = new CIncomingMessage(pdu, memIndex, atHandler.storageLocations.substring((memoryLocation * 2), (memoryLocation * 2) + 2));
+			CIncomingMessage msg = new CIncomingMessage(pdu, memIndex, atHandler.getStorageLocations().substring((memoryLocation * 2), (memoryLocation * 2) + 2));
 			// Check if this message is multipart.
 			if (!msg.isMultipart()) {
 				// This message has only one part, so add it to the list for immediate processing
@@ -726,7 +727,7 @@ public class CService {
 			}
 		} else if (isStatusReportMessage(pdu)) {
 			log.info("PDU appears to be a status report.  Processing accordingly.");
-			messageList.add(new CStatusReportMessage(pdu, memIndex, atHandler.storageLocations.substring((memoryLocation * 2), (memoryLocation * 2) + 2)));
+			messageList.add(new CStatusReportMessage(pdu, memIndex, atHandler.getStorageLocations().substring((memoryLocation * 2), (memoryLocation * 2) + 2)));
 			deviceInfo.getStatistics().incTotalIn();
 		} else {
 			log.info("Unrecognized message type; ignoring.");
@@ -740,9 +741,9 @@ public class CService {
 				throw new NotConnectedException();
 			} else {
 				atHandler.switchToCmdMode();
-				log.debug("Checking storage locations: " + atHandler.storageLocations);
-				for (int ml = 0; ml < (atHandler.storageLocations.length() / 2); ml++) {
-					String memoryLocation = atHandler.storageLocations.substring((ml * 2), (ml * 2) + 2);
+				log.debug("Checking storage locations: " + atHandler.getStorageLocations());
+				for (int ml = 0; ml < (atHandler.getStorageLocations().length() / 2); ml++) {
+					String memoryLocation = atHandler.getStorageLocations().substring((ml * 2), (ml * 2) + 2);
 					if (atHandler.setMemoryLocation(memoryLocation)) {
 						String response = atHandler.listMessages(messageClass);
 						response = response.replaceAll("\\s+OK\\s+", "\nOK\n");
@@ -849,8 +850,8 @@ public class CService {
 		synchronized (_SYNC_) {
 			if (isConnected()) {
 				atHandler.switchToCmdMode();
-				for (int ml = 0; ml < (atHandler.storageLocations.length() / 2); ml++) {
-					if (atHandler.setMemoryLocation(atHandler.storageLocations.substring((ml * 2), (ml * 2) + 2))) {
+				for (int ml = 0; ml < (atHandler.getStorageLocations().length() / 2); ml++) {
+					if (atHandler.setMemoryLocation(atHandler.getStorageLocations().substring((ml * 2), (ml * 2) + 2))) {
 						response = atHandler.listMessages(messageClass);
 						response = response.replaceAll("\\s+OK\\s+", "\nOK");
 						reader = new BufferedReader(new StringReader(response));
@@ -898,7 +899,7 @@ public class CService {
 								cal2.set(Calendar.MINUTE, Integer.parseInt(dateStr.substring(3, 5)));
 								cal2.set(Calendar.SECOND, Integer.parseInt(dateStr.substring(6, 8)));
 
-								msg = new CStatusReportMessage(Integer.parseInt(refNo), memIndex, atHandler.storageLocations.substring((ml * 2), (ml * 2) + 2), cal1.getTimeInMillis(), cal2.getTimeInMillis());
+								msg = new CStatusReportMessage(Integer.parseInt(refNo), memIndex, atHandler.getStorageLocations().substring((ml * 2), (ml * 2) + 2), cal1.getTimeInMillis(), cal2.getTimeInMillis());
 								log.debug("IN-DTLS: MI:" + msg.getMemIndex());
 								messageList.add(msg);
 								deviceInfo.getStatistics().incTotalIn();
@@ -936,7 +937,7 @@ public class CService {
 									// N.B. should confirm that is exactly what it's doing before replacing!
 								}
 								
-								msg = new CIncomingMessage(cal1.getTimeInMillis(), originator, msgText, memIndex, atHandler.storageLocations.substring((ml * 2), (ml * 2) + 2));
+								msg = new CIncomingMessage(cal1.getTimeInMillis(), originator, msgText, memIndex, atHandler.getStorageLocations().substring((ml * 2), (ml * 2) + 2));
 								log.debug("IN-DTLS: MI:" + msg.getMemIndex());
 								messageList.add(msg);
 								deviceInfo.getStatistics().incTotalIn();

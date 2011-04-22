@@ -22,46 +22,12 @@
 package org.smslib;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 
-import org.apache.log4j.Logger;
 import org.smslib.CService.MessageClass;
-import org.smslib.handler.*;
-import org.smslib.stk.NoStkSupportException;
 import org.smslib.stk.StkRequest;
 import org.smslib.stk.StkResponse;
 
 abstract public class AbstractATHandler {
-	/** The value returned by {@link #sendMessage(int, String, String, String)} instead of a valid
-	 * SMSC reference number when sending a message failed. */
-	protected static final int SMSC_REF_NUMBER_SEND_FAILED = -1;
-	
-	protected CSerialDriver serialDriver;
-
-	protected Logger log;
-
-	protected String storageLocations = "";
-
-	protected CService srv;
-
-	protected static final int DELAY_AT = 200;
-
-	protected static final int DELAY_RESET = 20000;
-	
-	protected static final int DELAY_PIN = 12000;
-
-	protected static final int DELAY_CMD_MODE = 1000;
-
-	protected static final int DELAY_CMGS = 300;
-
-	public AbstractATHandler(CSerialDriver serialDriver, Logger log, CService srv) {
-		super();
-		this.serialDriver = serialDriver;
-		this.log = log;
-		this.srv = srv;
-		storageLocations = "";
-	}
-
 	abstract protected void setStorageLocations(String loc);
 
 	abstract protected boolean dataAvailable() throws IOException;
@@ -164,7 +130,8 @@ abstract public class AbstractATHandler {
 
 	abstract protected String getNetworkRegistration() throws IOException;
 
-	abstract protected void getStorageLocations() throws IOException;
+	abstract protected String getStorageLocations();
+	abstract protected void initStorageLocations() throws IOException;
 
 	/**
 	 * Checks whether this AT Handler has support for receiving SMS messages
@@ -186,120 +153,9 @@ abstract public class AbstractATHandler {
 	 */
 	public abstract boolean supportsUcs2SmsSending();
 	
-	/**
-	 * Attempt to load a particular AT Handler.
-	 * @param serialDriver
-	 * @param log
-	 * @param srv
-	 * @param handlerClassName
-	 * @return A new instance of the required handler.
-	 * @throws ClassNotFoundException
-	 * @throws SecurityException
-	 * @throws NoSuchMethodException
-	 * @throws IllegalArgumentException
-	 * @throws InstantiationException
-	 * @throws InvocationTargetException
-	 * @throws IllegalAccessException
-	 */
-	@SuppressWarnings("unchecked")
-	private static AbstractATHandler load(CSerialDriver serialDriver, Logger log, CService srv, String handlerClassName) throws ClassNotFoundException, SecurityException, NoSuchMethodException, IllegalArgumentException, InstantiationException, InvocationTargetException, IllegalAccessException {
-		log.info("Attempting to load handler: " + handlerClassName);
-		
-		Class<AbstractATHandler> handlerClass = (Class<AbstractATHandler>) Class.forName(handlerClassName);
+	protected abstract CService.Protocol getProtocol();
 
-		java.lang.reflect.Constructor<AbstractATHandler> handlerConstructor = handlerClass.getConstructor(new Class[] { CSerialDriver.class, Logger.class, CService.class });
-		AbstractATHandler atHandlerInstance = handlerConstructor.newInstance(new Object[]{serialDriver, log, srv});
-		
-		log.info("Successfully loaded handler: " + atHandlerInstance.getClass().getName());
-		
-		return atHandlerInstance;
-	}
+	public abstract boolean supportsStk();
 	
-	/**
-	 * 
-	 * @param serialDriver
-	 * @param log
-	 * @param srv
-	 * @param gsmDeviceManufacturer
-	 * @param gsmDeviceModel
-	 * @param catHandlerAlias
-	 * @return
-	 */
-	static AbstractATHandler load(CSerialDriver serialDriver, Logger log, CService srv, String gsmDeviceManufacturer, String gsmDeviceModel, String catHandlerAlias) {
-		log.trace("ENTRY");
-		final String BASE_HANDLER = org.smslib.handler.CATHandler.class.getName();
-
-		if (catHandlerAlias != null && !catHandlerAlias.equals("")) {
-			// suggested cat handler from method param
-			String requestedHandlerName = BASE_HANDLER + "_" + catHandlerAlias;
-			try {
-				return load(serialDriver, log, srv, requestedHandlerName);
-			} catch(Exception ex) {
-				log.info("Could not load requested handler '" + requestedHandlerName + "'; will try more generic version.", ex);
-			}
-		}
-
-		if (gsmDeviceManufacturer != null && !gsmDeviceManufacturer.equals("")) {
-			String manufacturerHandlerName = BASE_HANDLER + "_" + gsmDeviceManufacturer;
-			
-			if (gsmDeviceModel != null && !gsmDeviceModel.equals("")) {
-				String modelHandlerName = manufacturerHandlerName + "_" + gsmDeviceModel;
-				try {
-					return load(serialDriver, log, srv, modelHandlerName);
-				} catch(Exception ex) {
-					log.info("Could not load requested handler '" + modelHandlerName + "'; will try more generic version.", ex);
-				}
-			}
-
-			try {
-				return load(serialDriver, log, srv, manufacturerHandlerName);
-			} catch(Exception ex) {
-				log.info("Could not load requested handler '" + manufacturerHandlerName + "'; will try more generic version.", ex);
-			}
-		}
-		
-		return new CATHandler(serialDriver, log, srv);
-	}
-	
-	/** List of all AT handler classes */
-	@SuppressWarnings("unchecked")
-	private static final Class[] HANDLERS = {
-		CATHandler.class,
-		CATHandler_Huawei.class,
-		CATHandler_Motorola_RAZRV3x.class,
-		CATHandler_Nokia_S40_3ed.class,
-		CATHandler_Samsung.class,
-		CATHandler_Siemens_M55.class,
-		CATHandler_Siemens_MC75.class,
-		CATHandler_Siemens_S55.class,
-		CATHandler_Siemens_TC35.class,
-		CATHandler_SonyEricsson_GT48.class,
-		CATHandler_SonyEricsson_W550i.class,
-		CATHandler_SonyEricsson.class,
-		CATHandler_Symbian_PiAccess.class,
-		CATHandler_Wavecom_M1306B.class,
-		CATHandler_Wavecom.class,
-	};
-
-	/**
-	 * Gets a list containing all available AT Handlers.
-	 */
-	@SuppressWarnings("unchecked")
-	public static <T extends AbstractATHandler> Class<T>[] getHandlers() {
-		return HANDLERS;
-	}
-	
-	
-	
-	protected CService.Protocol getProtocol() {
-		return CService.Protocol.PDU;
-	}
-
-	public boolean supportsStk() {
-		return false;
-	}
-	
-	public StkResponse stkRequest(StkRequest request, String... variables) throws SMSLibDeviceException {
-		throw new NoStkSupportException();
-	}
+	public abstract StkResponse stkRequest(StkRequest request, String... variables) throws SMSLibDeviceException;
 }
