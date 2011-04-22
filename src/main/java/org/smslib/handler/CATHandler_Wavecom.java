@@ -28,32 +28,25 @@ import org.apache.log4j.*;
 
 public class CATHandler_Wavecom extends CATHandler
 {
-	public CATHandler_Wavecom(CSerialDriver serialDriver, Logger log, CService srv)
-	{
+	public CATHandler_Wavecom(CSerialDriver serialDriver, Logger log, CService srv) {
 		super(serialDriver, log, srv);
 		storageLocations = "SMSR";
 	}
 
-	protected void reset() throws IOException
-	{
+	public void reset() throws IOException {
 	}
 
-	protected void init() throws IOException
-	{
-		serialDriver.send("AT+WOPEN=0\r");
-		serialDriver.getResponse();
+	public void init() throws IOException {
+		serialSendReceive("AT+WOPEN=0\r");
 	}
 
-	protected boolean enableIndications() throws IOException
-	{
+	public boolean enableIndications() throws IOException {
 		serialDriver.send("AT+CNMI=1,1,0,2,0\r");
 		return (serialDriver.getResponse().matches("\\s+OK\\s+"));
 	}
 
-	protected boolean disableIndications() throws IOException
-	{
+	public boolean disableIndications() throws IOException {
 		serialDriver.send("AT+CNMI=0,0,0,2,0\r");
 		return (serialDriver.getResponse().matches("\\s+OK\\s+"));
 	}
-
 }

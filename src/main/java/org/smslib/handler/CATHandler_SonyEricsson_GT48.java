@@ -28,13 +28,11 @@ import org.apache.log4j.*;
 
 public class CATHandler_SonyEricsson_GT48 extends CATHandler_SonyEricsson
 {
-	public CATHandler_SonyEricsson_GT48(CSerialDriver serialDriver, Logger log, CService srv)
-	{
+	public CATHandler_SonyEricsson_GT48(CSerialDriver serialDriver, Logger log, CService srv) {
 		super(serialDriver, log, srv);
 	}
 
-	protected int sendMessage(int size, String pdu, String phone, String text) throws IOException, NoResponseException, UnrecognizedHandlerProtocolException
-	{
+	public int sendMessage(int size, String pdu, String phone, String text) throws IOException, NoResponseException, UnrecognizedHandlerProtocolException {
 		int responseRetries, errorRetries;
 		String response;
 		int refNo;

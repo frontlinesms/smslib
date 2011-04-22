@@ -42,7 +42,7 @@ public class CATHandler_Motorola_RAZRV3x extends CATHandler
 
 	/** @see CATHandler#listMessages(MessageClass) */
 	@Override
-	protected String listMessages(MessageClass messageClass) throws IOException, SMSLibDeviceException  {
+	public String listMessages(MessageClass messageClass) throws IOException, SMSLibDeviceException  {
 		String response = super.listMessages(messageClass);
 		BufferedReader reader = new BufferedReader(new StringReader(response));
 		String line;

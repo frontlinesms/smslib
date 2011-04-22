@@ -26,21 +26,18 @@ import java.io.IOException;
 import org.smslib.*;
 import org.apache.log4j.*;
 
-public class CATHandler_Siemens_TC35 extends CATHandler
-{
+public class CATHandler_Siemens_TC35 extends CATHandler {
 	public CATHandler_Siemens_TC35(CSerialDriver serialDriver, Logger log, CService srv)
 	{
 		super(serialDriver, log, srv);
 	}
 
-	protected boolean disableIndications() throws IOException
-	{
+	public boolean disableIndications() throws IOException {
 		serialDriver.send("AT+CNMI=3,0,0,0,1\r");
 		return (serialDriver.getResponse().matches("\\s+OK\\s+"));
 	}
 
-	protected boolean enableIndications() throws IOException
-	{
+	public boolean enableIndications() throws IOException {
 		serialDriver.send("AT+CNMI=2,1,0,0,1\r");
 		return (serialDriver.getResponse().matches("\\s+OK\\s+"));
 	}

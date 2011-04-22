@@ -30,7 +30,7 @@ import org.smslib.stk.StkRequest;
 import org.smslib.stk.StkResponse;
 import org.apache.log4j.*;
 
-public class CATHandler extends AbstractATHandler {
+public class CATHandler implements ATHandler {
 	/**
 	 * Exceptionally fine logging level used when troubleshooting low-level problems with AT devices.
 	 * FIXME remove this and disable it
@@ -74,19 +74,19 @@ public class CATHandler extends AbstractATHandler {
 		this.srv = srv;
 	}
 	
-	protected String getStorageLocations() {
+	public String getStorageLocations() {
 		return this.storageLocations;
 	}
 
-	protected void setStorageLocations(String loc) {
+	public void setStorageLocations(String loc) {
 		storageLocations = loc;
 	}
 
-	protected boolean dataAvailable() throws IOException {
+	public boolean dataAvailable() throws IOException {
 		return serialDriver.dataAvailable();
 	}
 
-	protected void sync() throws IOException {
+	public void sync() throws IOException {
 		for(int i=0; i<4; ++i) {
 			sleepWithoutInterruption(DELAY_AT);
 			serialDriver.send("AT\r");
@@ -94,13 +94,13 @@ public class CATHandler extends AbstractATHandler {
 		sleepWithoutInterruption(DELAY_AT);
 	}
 
-	protected void reset() throws IOException {}
+	public void reset() throws IOException {}
 
-	protected void echoOff() throws IOException {
+	public void echoOff() throws IOException {
 		serialSendReceive(AT_ECHO_OFF);
 	}
 
-	protected void init() throws IOException {
+	public void init() throws IOException {
 		serialSendReceive("AT+CLIP=1");
 		serialSendReceive("AT+COPS=0");
 		// No need for the following, until full GPRS functionality is implemented.
@@ -108,16 +108,16 @@ public class CATHandler extends AbstractATHandler {
 		serialDriver.emptyBuffer();
 	}
 
-	protected boolean isAlive() throws IOException {
+	public boolean isAlive() throws IOException {
 		String response = serialSendReceive("AT");
 		return response.matches("\\s*[\\p{ASCII}]*\\s+OK\\s");
 	}
 	
-	protected String getPinResponse() throws IOException {
+	public String getPinResponse() throws IOException {
 		return serialSendReceive("AT+CPIN?");
 	}
 	
-	protected boolean isWaitingForPin(String commandResponse) {
+	public boolean isWaitingForPin(String commandResponse) {
 		return commandResponse.contains("SIM PIN");
 	}
 	
@@ -125,15 +125,15 @@ public class CATHandler extends AbstractATHandler {
 	 * Added due to confusion about the implementation of PIN checking in {@link CService}
 	 * @author alex@frontlinesms.com
 	 */
-	protected boolean isWaitingForPin2(String commandResponse) {
+	public boolean isWaitingForPin2(String commandResponse) {
 		return commandResponse.contains("SIM PIN2");
 	}
 
-	protected boolean isWaitingForPuk(String commandResponse) {
+	public boolean isWaitingForPuk(String commandResponse) {
 		return commandResponse.contains("SIM PUK");
 	}
 
-	protected boolean enterPin(String pin) throws IOException {
+	public boolean enterPin(String pin) throws IOException {
 		serialDriver.send(CUtils.replace("AT+CPIN=\"{1}\"\r", "{1}", pin));
 		sleepWithoutInterruption(DELAY_PIN);
 		if(serialDriver.getResponse().contains("OK")) {
@@ -142,17 +142,17 @@ public class CATHandler extends AbstractATHandler {
 		} else return false;
 	}
 
-	protected boolean setVerboseErrors() throws IOException {
+	public boolean setVerboseErrors() throws IOException {
 		String response = serialSendReceive("AT+CMEE=1");
 		return response.matches("\\s+OK\\s+");
 	}
 
-	protected boolean setPduMode() throws IOException {
+	public boolean setPduMode() throws IOException {
 		String response = serialSendReceive("AT+CMGF=0");
 		return response.matches("\\s+OK\\s+");
 	}
 
-	protected boolean setTextMode() throws IOException {
+	public boolean setTextMode() throws IOException {
 		String response = serialSendReceive("AT+CMGF=1");
 		if(response.matches("\\s+OK\\s+")) {
 			response = serialSendReceive("AT+CSCS=\"HEX\"");
@@ -160,59 +160,59 @@ public class CATHandler extends AbstractATHandler {
 		} else return false;
 	}
 
-	protected boolean enableIndications() throws IOException {
+	public boolean enableIndications() throws IOException {
 		String response = serialSendReceive("AT+CNMI=1,1,0,0,0");
 		return response.matches("\\s+OK\\s+");
 	}
 
-	protected boolean disableIndications() throws IOException {
+	public boolean disableIndications() throws IOException {
 		String response = serialSendReceive("AT+CNMI=0,0,0,0,0");
 		return response.matches("\\s+OK\\s+");
 	}
 
-	protected String getManufacturer() throws IOException {
+	public String getManufacturer() throws IOException {
 		return executeATCommand("CGMI", true);
 	}
 
-	protected String getModel() throws IOException {
+	public String getModel() throws IOException {
 		return executeATCommand("CGMM", true);
 	}
 	
-	protected String getMsisdn() throws IOException {
+	public String getMsisdn() throws IOException {
 		return executeATCommand(AT_GET_MSISDN, true);
 	}
 
-	protected String getSerialNo() throws IOException {
+	public String getSerialNo() throws IOException {
 		return executeATCommand("CGSN", true);
 	}
 
-	protected String getImsi() throws IOException {
+	public String getImsi() throws IOException {
 		return serialSendReceive(AT_IMSI);
 	}
 
-	protected String getSwVersion() throws IOException {
+	public String getSwVersion() throws IOException {
 		return serialSendReceive("AT+CGMR");
 	}
 
-	protected String getBatteryLevel() throws IOException {
+	public String getBatteryLevel() throws IOException {
 		return serialSendReceive(AT_BATTERY);
 	}
 
-	protected String getSignalLevel() throws IOException {
+	public String getSignalLevel() throws IOException {
 		return serialSendReceive("AT+CSQ");
 	}
 
-	protected boolean setMemoryLocation(String mem) throws IOException {
+	public boolean setMemoryLocation(String mem) throws IOException {
 		String response = serialSendReceive("AT+CPMS=\"" + mem + "\"");
 		return response.matches("\\s*[\\p{ASCII}]*\\s+OK\\s");
 	}
 
-	protected void switchToCmdMode() throws IOException {
+	public void switchToCmdMode() throws IOException {
 		serialDriver.send("+++" + END_OF_LINE);
 		sleepWithoutInterruption(DELAY_CMD_MODE);
 	}
 
-	protected boolean keepGsmLinkOpen() throws IOException {
+	public boolean keepGsmLinkOpen() throws IOException {
 		String response = serialSendReceive("AT+CMMS=1");
 		return response.matches("\\s+OK\\s+");
 	}
@@ -282,7 +282,7 @@ public class CATHandler extends AbstractATHandler {
 	}
 
 	/** Sends an SMS message and retrieves the SMSC reference number assigned to it. */
-	protected int sendMessage(int size, String pdu, String phone, String text) throws IOException, NoResponseException, UnrecognizedHandlerProtocolException {
+	public int sendMessage(int size, String pdu, String phone, String text) throws IOException, NoResponseException, UnrecognizedHandlerProtocolException {
 		int smscReferenceNumber;
 		CService.Protocol messageProtocol = srv.getProtocol();
 		switch(messageProtocol) {
@@ -315,7 +315,7 @@ public class CATHandler extends AbstractATHandler {
 		return Integer.parseInt(bob.toString());		
 	}
 
-	protected String listMessages(MessageClass messageClass) throws IOException, UnrecognizedHandlerProtocolException, SMSLibDeviceException {
+	public String listMessages(MessageClass messageClass) throws IOException, UnrecognizedHandlerProtocolException, SMSLibDeviceException {
 		if(TRACE) System.out.println("CATHandler.listMessages() : " + this.getClass().getSimpleName());
 		
 		CService.Protocol messageProtocol = srv.getProtocol();
@@ -329,22 +329,22 @@ public class CATHandler extends AbstractATHandler {
 		}
 	}
 
-	protected boolean deleteMessage(int memIndex, String memLocation) throws IOException {
+	public boolean deleteMessage(int memIndex, String memLocation) throws IOException {
 		if (!setMemoryLocation(memLocation)) throw new RuntimeException("CATHandler.deleteMessage() : Memory Location not found!!!");
 		String response = serialSendReceive(CUtils.replace("AT+CMGD={1}", "{1}", "" + memIndex));
 		return response.matches("\\s+OK\\s+");
 	}
 
-	protected String getGprsStatus() throws IOException {
+	public String getGprsStatus() throws IOException {
 		return serialSendReceive(AT_GPRS_STATUS);
 	}
 
-	protected String getNetworkRegistration() throws IOException {
+	public String getNetworkRegistration() throws IOException {
 		return serialSendReceive(AT_NETWORK_REGISTRATION);
 	}
 
-	/** @see AbstractATHandler#getStorageLocations() */
-	protected void initStorageLocations() throws IOException {
+	/** @see ATHandler#getStorageLocations() */
+	public void initStorageLocations() throws IOException {
 		String response = serialSendReceive("AT+CPMS?");
 		if(response.contains("+CPMS:")) {
 			response = response.replaceAll("\\s*\\+CPMS:\\s*", "");
@@ -362,9 +362,9 @@ public class CATHandler extends AbstractATHandler {
 	 * Writes a string to the serial driver, appends a {@link #END_OF_LINE}, and retrieves the response.
 	 * @param command The string to send to the serial device
 	 * @return The response to the issued command, verbatim
-	 * @throws IOException if access to {@link AbstractATHandler#serialDriver} throws an {@link IOException}
+	 * @throws IOException if access to {@link ATHandler#serialDriver} throws an {@link IOException}
 	 */
-	protected String serialSendReceive(String command) throws IOException {
+	public String serialSendReceive(String command) throws IOException {
 		if(TRACE) log.info("ISSUING COMMAND: " + command);
 		if(TRACE) System.out.println("[" + Thread.currentThread().getName() + "] ISSUING COMMAND: " + command);
 		serialDriver.send(command + END_OF_LINE);
@@ -411,15 +411,19 @@ public class CATHandler extends AbstractATHandler {
 	}
 	
 	/** This method should be overridden by AT Handlers that only support sending. */
-	protected boolean supportsReceive() {
+	public boolean supportsReceive() {
 		return true;
 	}
 
 	public boolean supportsUcs2SmsSending() {
 		return true;
 	}
+	
+	public boolean supportsBinarySmsSending() {
+		return true;
+	}
 
-	protected CService.Protocol getProtocol() {
+	public CService.Protocol getProtocol() {
 		return CService.Protocol.PDU;
 	}
 

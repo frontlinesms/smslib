@@ -3,7 +3,6 @@ package org.smslib.handler;
 import java.lang.reflect.InvocationTargetException;
 
 import org.apache.log4j.Logger;
-import org.smslib.AbstractATHandler;
 import org.smslib.CSerialDriver;
 import org.smslib.CService;
 
@@ -24,13 +23,13 @@ public class CATHandlerUtils {
 	 * @throws IllegalAccessException
 	 */
 	@SuppressWarnings("unchecked")
-	private static AbstractATHandler load(CSerialDriver serialDriver, Logger log, CService srv, String handlerClassName) throws ClassNotFoundException, SecurityException, NoSuchMethodException, IllegalArgumentException, InstantiationException, InvocationTargetException, IllegalAccessException {
+	private static ATHandler load(CSerialDriver serialDriver, Logger log, CService srv, String handlerClassName) throws ClassNotFoundException, SecurityException, NoSuchMethodException, IllegalArgumentException, InstantiationException, InvocationTargetException, IllegalAccessException {
 		log.info("Attempting to load handler: " + handlerClassName);
 		
-		Class<AbstractATHandler> handlerClass = (Class<AbstractATHandler>) Class.forName(handlerClassName);
+		Class<ATHandler> handlerClass = (Class<ATHandler>) Class.forName(handlerClassName);
 
-		java.lang.reflect.Constructor<AbstractATHandler> handlerConstructor = handlerClass.getConstructor(new Class[] { CSerialDriver.class, Logger.class, CService.class });
-		AbstractATHandler atHandlerInstance = handlerConstructor.newInstance(new Object[]{serialDriver, log, srv});
+		java.lang.reflect.Constructor<ATHandler> handlerConstructor = handlerClass.getConstructor(new Class[] { CSerialDriver.class, Logger.class, CService.class });
+		ATHandler atHandlerInstance = handlerConstructor.newInstance(new Object[]{serialDriver, log, srv});
 		
 		log.info("Successfully loaded handler: " + atHandlerInstance.getClass().getName());
 		
@@ -47,7 +46,7 @@ public class CATHandlerUtils {
 	 * @param catHandlerAlias
 	 * @return
 	 */
-	public static AbstractATHandler load(CSerialDriver serialDriver, Logger log, CService srv, String gsmDeviceManufacturer, String gsmDeviceModel, String catHandlerAlias) {
+	public static ATHandler load(CSerialDriver serialDriver, Logger log, CService srv, String gsmDeviceManufacturer, String gsmDeviceModel, String catHandlerAlias) {
 		log.trace("ENTRY");
 		final String BASE_HANDLER = org.smslib.handler.CATHandler.class.getName();
 
@@ -107,7 +106,7 @@ public class CATHandlerUtils {
 	 * Gets a list containing all available AT Handlers.
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T extends AbstractATHandler> Class<T>[] getHandlers() {
+	public static <T extends ATHandler> Class<T>[] getHandlers() {
 		return HANDLERS;
 	}
 }

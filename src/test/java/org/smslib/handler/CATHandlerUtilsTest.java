@@ -6,19 +6,18 @@ package org.smslib.handler;
 import net.frontlinesms.junit.BaseTestCase;
 
 import org.apache.log4j.Logger;
-import org.smslib.AbstractATHandler;
 import org.smslib.CSerialDriver;
 import org.smslib.CService;
 
 import static org.mockito.Mockito.*;
 
 /**
- * Unit tests for the {@link AbstractATHandler} class.
+ * Unit tests for the {@link ATHandler} class.
  * @author Alex Anderson <alex@frontlinesms.com>
  */
 public class CATHandlerUtilsTest extends BaseTestCase {
 	/**
-	 * Test the loading of {@link CATHandler}s by {@link AbstractATHandler#load(CSerialDriver, Logger, CService, String, String, String)}.
+	 * Test the loading of {@link CATHandler}s by {@link ATHandler#load(CSerialDriver, Logger, CService, String, String, String)}.
 	 */
 	public void testLoad() {
 		// N.B. The manufacturer names used here ARE case-sensitive.
@@ -28,11 +27,11 @@ public class CATHandlerUtilsTest extends BaseTestCase {
 		// More mapping tests should be added here
 	}
 	
-	private void testLoad(Class<? extends AbstractATHandler> expectedHandler, String gsmDeviceManufacturer, String gsmDeviceModel) {
+	private void testLoad(Class<? extends ATHandler> expectedHandler, String gsmDeviceManufacturer, String gsmDeviceModel) {
 		CSerialDriver serialDriver = mock(CSerialDriver.class);
 		Logger log = mock(Logger.class);
 		CService srv = mock(CService.class);
-		AbstractATHandler loadedHandler = CATHandlerUtils.load(serialDriver, log, srv, gsmDeviceManufacturer, gsmDeviceModel, null);
+		ATHandler loadedHandler = CATHandlerUtils.load(serialDriver, log, srv, gsmDeviceManufacturer, gsmDeviceModel, null);
 		assertEquals(expectedHandler, loadedHandler.getClass());
 	}
 }

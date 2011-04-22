@@ -39,15 +39,13 @@ public class CATHandler_Wavecom_M1306B extends CATHandler_Wavecom
 		if (log != null) log.warn("****************************************************");
 	}
 
-	protected void reset() throws IOException
-	{
+	public void reset() throws IOException {
 		serialDriver.send("AT+CFUN=1\r");
 		sleepWithoutInterruption(DELAY_RESET);
 		serialDriver.clearBuffer();
 	}
 
-	protected int sendMessage(int size, String pdu, String phone, String text) throws IOException, NoResponseException, UnrecognizedHandlerProtocolException
-	{
+	public int sendMessage(int size, String pdu, String phone, String text) throws IOException, NoResponseException, UnrecognizedHandlerProtocolException {
 		int responseRetries, errorRetries;
 		String response;
 		int refNo;

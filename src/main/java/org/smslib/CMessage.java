@@ -23,6 +23,7 @@ package org.smslib;
 
 import java.util.Arrays;
 
+import org.smslib.handler.ATHandler;
 import org.smslib.sms.SmsMessageEncoding;
 import org.smslib.util.TpduUtils;
 
@@ -48,7 +49,7 @@ public abstract class CMessage {
 	/** The type of message, from {@link MessageType}.  TODO {@link MessageType} should probably be an enum. */
 	protected final int type;
 	/** For a successfully sent message, the SMSC reference number of a sent message.  For a message which failed,
-	 * this will have a value less than zero, such as {@link AbstractATHandler#SMSC_REF_NUMBER_SEND_FAILED} */
+	 * this will have a value less than zero, such as {@link ATHandler#SMSC_REF_NUMBER_SEND_FAILED} */
 	protected int refNo;
 	protected String id;
 	/**

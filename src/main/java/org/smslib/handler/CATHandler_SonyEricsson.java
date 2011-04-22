@@ -28,27 +28,22 @@ import org.apache.log4j.*;
 
 public class CATHandler_SonyEricsson extends CATHandler
 {
-	public CATHandler_SonyEricsson(CSerialDriver serialDriver, Logger log, CService srv)
-	{
+	public CATHandler_SonyEricsson(CSerialDriver serialDriver, Logger log, CService srv) {
 		super(serialDriver, log, srv);
 	}
 
-	protected void reset() throws IOException
-	{
+	public void reset() throws IOException {
 		serialDriver.send("AT+CFUN=1,1\r");
 		sleepWithoutInterruption(DELAY_RESET);
 		serialDriver.clearBuffer();
 	}
 
-	protected boolean setPduMode() throws IOException
-	{
-		serialDriver.send("AT+CMGF=0\r");
-		String respStr = serialDriver.getResponse();
+	public boolean setPduMode() throws IOException {
+		String respStr = serialSendReceive("AT+CMGF=0\r");
 		return (respStr.matches("\\s+OK\\s+") || respStr.matches("\\s*\\+CMGF: 0\\s*OK\\s"));
 	}
 
-	protected boolean disableIndications() throws IOException
-	{
+	public boolean disableIndications() throws IOException {
 		String atDisableIndications = "AT\r";
 		serialDriver.send("AT+CNMI=?\r");
 		String cnmiTestResponse = serialDriver.getResponse().toUpperCase();
@@ -60,8 +55,7 @@ public class CATHandler_SonyEricsson extends CATHandler
 		return (serialDriver.getResponse().matches("\\s+OK\\s+"));
 	}
 
-	protected int sendMessage(int size, String pdu, String phone, String text) throws IOException, NoResponseException, UnrecognizedHandlerProtocolException
-	{
+	public int sendMessage(int size, String pdu, String phone, String text) throws IOException, NoResponseException, UnrecognizedHandlerProtocolException {
 		int responseRetries, errorRetries;
 		String response;
 		int refNo;

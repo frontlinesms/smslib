@@ -34,7 +34,7 @@ public class CATHandler_Samsung extends CATHandler {
 	 * There's some funny stuff with Samsungs - they might support receive one day, 
 	 * but without support for AT+CMGL, it's gonna be a lot of fun implementing it.
 	 */
-	protected boolean supportsReceive() {
+	public boolean supportsReceive() {
 		return false;
 	}
 }

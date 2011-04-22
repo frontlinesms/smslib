@@ -19,94 +19,99 @@
 // License along with this library; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-package org.smslib;
+package org.smslib.handler;
 
 import java.io.IOException;
 
+import org.smslib.CService;
+import org.smslib.NoResponseException;
+import org.smslib.SMSLibDeviceException;
+import org.smslib.UnrecognizedHandlerProtocolException;
 import org.smslib.CService.MessageClass;
+import org.smslib.CService.Protocol;
 import org.smslib.stk.StkRequest;
 import org.smslib.stk.StkResponse;
 
-abstract public class AbstractATHandler {
-	abstract protected void setStorageLocations(String loc);
+public interface ATHandler {
+	void setStorageLocations(String loc);
 
-	abstract protected boolean dataAvailable() throws IOException;
+	boolean dataAvailable() throws IOException;
 
-	abstract protected void sync() throws IOException;
+	void sync() throws IOException;
 
-	abstract protected void reset() throws IOException;
+	void reset() throws IOException;
 
-	abstract protected void echoOff() throws IOException;
+	void echoOff() throws IOException;
 
-	abstract protected void init() throws IOException;
+	void init() throws IOException;
 
-	abstract protected boolean isAlive() throws IOException;
+	boolean isAlive() throws IOException;
 
 	/**
 	 * Issues the AT Command to check if the device is waiting for a PIN or PUK
 	 * @return The response from the AT Handler, verbatim
 	 * @throws IOException
 	 */
-	protected abstract String getPinResponse() throws IOException;
+	String getPinResponse() throws IOException;
 
 	/**
 	 * Check the supplied response to the PIN AT command to see if a PIN is required.
 	 * @param commandResponse
 	 * @return <code>true</code> if a PIN is being waited for; <code>false</code> otherwise
 	 */
-	protected abstract boolean isWaitingForPin(String commandResponse);
+	boolean isWaitingForPin(String commandResponse);
 	/**
 	 * Check the supplied response to the PIN AT command to see if a PIN2 is required.
 	 * @param commandResponse
 	 * @return <code>true</code> if a PIN2 is being waited for; <code>false</code> otherwise
 	 */
-	protected abstract boolean isWaitingForPin2(String commandResponse);
+	boolean isWaitingForPin2(String commandResponse);
 
 	/**
 	 * Check the supplied response to the PIN AT command to see if a PUK is required.
 	 * @param commandResponse
 	 * @return <code>true</code> if a PIN is being waited for; <code>false</code> otherwise
 	 */	
-	protected abstract boolean isWaitingForPuk(String commandResponse);
+	boolean isWaitingForPuk(String commandResponse);
 
-	abstract protected boolean enterPin(String pin) throws IOException;
+	boolean enterPin(String pin) throws IOException;
 
-	abstract protected boolean setVerboseErrors() throws IOException;
+	boolean setVerboseErrors() throws IOException;
 
-	abstract protected boolean setPduMode() throws IOException;
+	boolean setPduMode() throws IOException;
 
-	abstract protected boolean setTextMode() throws IOException;
+	boolean setTextMode() throws IOException;
 
-	abstract protected boolean enableIndications() throws IOException;
+	boolean enableIndications() throws IOException;
 
-	abstract protected boolean disableIndications() throws IOException;
+	boolean disableIndications() throws IOException;
 
-	abstract protected String getManufacturer() throws IOException;
+	String getManufacturer() throws IOException;
 
-	abstract protected String getModel() throws IOException;
+	String getModel() throws IOException;
 	
-	abstract protected String getMsisdn() throws IOException;
+	String getMsisdn() throws IOException;
 
-	abstract protected String getSerialNo() throws IOException;
+	String getSerialNo() throws IOException;
 
-	abstract protected String getImsi() throws IOException;
+	String getImsi() throws IOException;
 
-	abstract protected String getSwVersion() throws IOException;
+	String getSwVersion() throws IOException;
 
-	abstract protected String getBatteryLevel() throws IOException;
+	String getBatteryLevel() throws IOException;
 
-	abstract protected String getSignalLevel() throws IOException;
+	String getSignalLevel() throws IOException;
 
-	abstract protected boolean setMemoryLocation(String mem) throws IOException;
+	boolean setMemoryLocation(String mem) throws IOException;
 
 	/**
 	 * Switches the serial communication mode from data mode to command mode.  Command
 	 * mode allows the sending of AT commands.
 	 * @throws IOException if there was a problem with the serial connection
 	 */
-	abstract protected void switchToCmdMode() throws IOException;
+	void switchToCmdMode() throws IOException;
 
-	abstract protected boolean keepGsmLinkOpen() throws IOException;
+	boolean keepGsmLinkOpen() throws IOException;
 
 	/**
 	 * This method is called to send an SMS.  It can be used with {@link CService.Protocol#PDU} or
@@ -120,42 +125,40 @@ abstract public class AbstractATHandler {
 	 * @throws NoResponseException
 	 * @throws UnrecognizedHandlerProtocolException
 	 */
-	abstract protected int sendMessage(int size, String pdu, String phone, String text) throws IOException, NoResponseException, UnrecognizedHandlerProtocolException;
+	int sendMessage(int size, String pdu, String phone, String text) throws IOException, NoResponseException, UnrecognizedHandlerProtocolException;
 
-	abstract protected String listMessages(MessageClass messageClass) throws IOException, UnrecognizedHandlerProtocolException, SMSLibDeviceException;
+	String listMessages(MessageClass messageClass) throws IOException, UnrecognizedHandlerProtocolException, SMSLibDeviceException;
 
-	abstract protected boolean deleteMessage(int memIndex, String memLocation) throws IOException;
+	boolean deleteMessage(int memIndex, String memLocation) throws IOException;
 
-	abstract protected String getGprsStatus() throws IOException;
+	String getGprsStatus() throws IOException;
 
-	abstract protected String getNetworkRegistration() throws IOException;
+	String getNetworkRegistration() throws IOException;
 
-	abstract protected String getStorageLocations();
-	abstract protected void initStorageLocations() throws IOException;
+	String getStorageLocations();
+	void initStorageLocations() throws IOException;
 
 	/**
 	 * Checks whether this AT Handler has support for receiving SMS messages
 	 * @return true if this AT handler supports receiving of SMS messages.
 	 */
-	abstract protected boolean supportsReceive();
+	boolean supportsReceive();
 
 	/**
 	 * Checks whether this AT Handler has support for sending SMS binary messages
 	 * @return true if this AT handler supports sending of SMS binary message.
 	 */
-	protected boolean supportsBinarySmsSending() {
-		return true;
-	}
+	boolean supportsBinarySmsSending();
 
 	/**
 	 * Checks whether this AT Handler has support for sending UCS-2 encoded text messages.
 	 * @return true if this AT handler supports sending UCS-2 encoded text messages.
 	 */
-	public abstract boolean supportsUcs2SmsSending();
+	boolean supportsUcs2SmsSending();
 	
-	protected abstract CService.Protocol getProtocol();
+	CService.Protocol getProtocol();
 
-	public abstract boolean supportsStk();
+	boolean supportsStk();
 	
-	public abstract StkResponse stkRequest(StkRequest request, String... variables) throws SMSLibDeviceException;
+	StkResponse stkRequest(StkRequest request, String... variables) throws SMSLibDeviceException;
 }

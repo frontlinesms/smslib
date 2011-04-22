@@ -40,7 +40,7 @@ public class CATHandler_Symbian_PiAccess extends CATHandler {
 //> CATHandler OVERRIDES
 	/** @see CATHandler#switchToCmdMode() */
 	@Override
-	protected void switchToCmdMode() throws IOException {
+	public void switchToCmdMode() throws IOException {
 		// apparently piAccess begins in command mode, so this method does not need to do anything.
 		log.debug("Not attempting to switch to command mode.");
 		return;
@@ -48,7 +48,7 @@ public class CATHandler_Symbian_PiAccess extends CATHandler {
 	
 	/** @see CATHandler#keepGsmLinkOpen() */
 	@Override
-	protected boolean keepGsmLinkOpen() throws IOException {
+	public boolean keepGsmLinkOpen() throws IOException {
 		// piAccess does not support this command, so there's no point in sending it.  Let's assume
 		// that the link is always open.
 		log.debug("Not attempting to keep GSM link open.");
@@ -61,7 +61,7 @@ public class CATHandler_Symbian_PiAccess extends CATHandler {
 	 * @throws SMSLibDeviceException 
 	 */
 	@Override
-	protected String listMessages(MessageClass messageClass) throws IOException, SMSLibDeviceException {
+	public String listMessages(MessageClass messageClass) throws IOException, SMSLibDeviceException {
 		log.trace("listMessages");
 		
 		String messageList = super.listMessages(messageClass);
@@ -130,7 +130,7 @@ public class CATHandler_Symbian_PiAccess extends CATHandler {
 	 * delete other messages, and will repeatedly return the same message 
 	 */
 	@Override
-	protected boolean deleteMessage(int memIndex, String memLocation) throws IOException {
+	public boolean deleteMessage(int memIndex, String memLocation) throws IOException {
 		// Let's pretend that we've deleted the message - doesn't seem to work at the moment
 		// TODO may want to call super.deleteMessage() here in case piAccess is ever fixed.
 		log.debug("Not attempting to delete messages.");

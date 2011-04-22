@@ -35,6 +35,7 @@ import java.util.TooManyListenersException;
 import serial.*;
 
 import org.apache.log4j.Logger;
+import org.smslib.handler.ATHandler;
 import org.smslib.handler.CATHandlerUtils;
 import org.smslib.sms.SmsMessageEncoding;
 import org.smslib.util.GsmAlphabet;
@@ -109,7 +110,7 @@ public class CService {
 
 	private Protocol protocol;
 
-	private AbstractATHandler atHandler;
+	private ATHandler atHandler;
 
 	private CNewMsgMonitor newMsgMonitor;
 
@@ -133,7 +134,7 @@ public class CService {
 	private final LinkedList<LinkedList<CIncomingMessage>> mpMsgList = new LinkedList<LinkedList<CIncomingMessage>>();
 
 	/** Constructor used for Unit Tests. */
-	CService(AbstractATHandler atHanndler) {
+	CService(ATHandler atHanndler) {
 		log = Logger.getLogger(CService.class);
 		this.atHandler = atHanndler;
 		this.deviceInfo = new CDeviceInfo();
@@ -414,7 +415,7 @@ public class CService {
 		this.retriesCmsErrors = retries;
 	}
 
-	/** This method only appears to be used in {@link AbstractATHandler#sendMessage(int, String, String, String)}
+	/** This method only appears to be used in {@link ATHandler#sendMessage(int, String, String, String)}
 	 * @return number of times to retry an AT command before giving up when the response is a CMS error */
 	public int getRetriesCmsErrors() {
 		return retriesCmsErrors;

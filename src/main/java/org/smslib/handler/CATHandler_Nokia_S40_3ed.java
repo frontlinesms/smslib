@@ -51,20 +51,20 @@ public class CATHandler_Nokia_S40_3ed extends CATHandler {
 //> ACCESSORS
 	/** @see CATHandler#initStorageLocations() */	
 	@Override
-	protected void initStorageLocations() {
+	public void initStorageLocations() {
 		LOG.warn("Receiving SMS not currently supported");
 	}
 
 	/** @see CATHandler#listMessages(int) */
 	@Override
-	protected String listMessages(MessageClass messageClass) throws IOException, UnrecognizedHandlerProtocolException {
+	public String listMessages(MessageClass messageClass) throws IOException, UnrecognizedHandlerProtocolException {
 		LOG.warn("Receiving SMS not currently supported");
 		return "";
 	}
 	
 	/** @see CATHandler#deleteMessage(int, String) */
 	@Override
-	protected boolean deleteMessage(int memIndex, String memLocation) throws IOException {
+	public boolean deleteMessage(int memIndex, String memLocation) throws IOException {
 		LOG.warn("Receiving SMS not currently supported");
 		return false;
 	}
@@ -76,7 +76,7 @@ public class CATHandler_Nokia_S40_3ed extends CATHandler {
 	 * @see CATHandler#supportsReceive()
 	 */
 	@Override
-	protected boolean supportsReceive() {
+	public boolean supportsReceive() {
 		return false;
 	}
 }

@@ -7,6 +7,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.StringReader;
 
+import org.smslib.handler.ATHandler;
 import org.smslib.util.TpduUtils;
 
 import net.frontlinesms.junit.BaseTestCase;
@@ -36,7 +37,7 @@ public class CServiceTest extends BaseTestCase {
 	 * @throws IOException if there was a problem communicating with the device. 
 	 */
 	private void testGetManufacturer(String atResponse, String expectedManufacturer) {
-		AbstractATHandler handler = mock(AbstractATHandler.class);
+		ATHandler handler = mock(ATHandler.class);
 		try {
 			when(handler.getManufacturer()).thenReturn(atResponse);
 		} catch (IOException e) { fail("Error creating mock."); }
@@ -93,7 +94,7 @@ public class CServiceTest extends BaseTestCase {
 	}
 	
 	public void testSendMessage_PDU(String smscNumber, String... messagePdus) throws IOException, SMSLibDeviceException {
-		AbstractATHandler handler = mock(AbstractATHandler.class);
+		ATHandler handler = mock(ATHandler.class);
 		CService service = new CService(handler);
 		
 		COutgoingMessage message = mock(COutgoingMessage.class);
