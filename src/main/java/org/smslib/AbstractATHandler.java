@@ -27,6 +27,9 @@ import java.lang.reflect.InvocationTargetException;
 import org.apache.log4j.Logger;
 import org.smslib.CService.MessageClass;
 import org.smslib.handler.*;
+import org.smslib.stk.NoStkSupportException;
+import org.smslib.stk.StkRequest;
+import org.smslib.stk.StkResponse;
 
 abstract public class AbstractATHandler {
 	/** The value returned by {@link #sendMessage(int, String, String, String)} instead of a valid
@@ -290,5 +293,13 @@ abstract public class AbstractATHandler {
 	
 	protected CService.Protocol getProtocol() {
 		return CService.Protocol.PDU;
+	}
+
+	public boolean supportsStk() {
+		return false;
+	}
+	
+	public StkResponse stkRequest(StkRequest request, String... variables) throws SMSLibDeviceException {
+		throw new NoStkSupportException();
 	}
 }

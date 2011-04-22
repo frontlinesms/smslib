@@ -34,12 +34,13 @@ import java.util.TooManyListenersException;
 
 import serial.*;
 
-
 import org.apache.log4j.Logger;
 import org.smslib.sms.SmsMessageEncoding;
 import org.smslib.util.GsmAlphabet;
 import org.smslib.util.HexUtils;
 import org.smslib.util.TpduUtils;
+
+import org.smslib.stk.*;
 
 /**
  * This is the main SMSLib service class.
@@ -1605,5 +1606,13 @@ public class CService {
 	public String getAtHandlerName() {
 		if (atHandler == null) return null;
 		return atHandler.getClass().getSimpleName();
+	}
+	
+	public boolean supportsStk() {
+		return atHandler.supportsStk();
+	}
+	
+	public StkResponse stkRequest(StkRequest request, String... variables) throws SMSLibDeviceException {
+		return atHandler.stkRequest(request, variables);
 	}
 }
