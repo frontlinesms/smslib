@@ -24,6 +24,8 @@ package org.smslib.handler;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.log4j.Logger;
 import org.smslib.CSerialDriver;
@@ -101,14 +103,25 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	}
 
 	private List<StkMenuItem> parseMenuItems(String serialSendReceive) { // FIXME implement parsing properly
+		Matcher matcher = Pattern.compile("\\+STGI: ((([\\d])+,)+)?\\\"[\\w ]+\\\"").matcher(serialSendReceive);
+		if (matcher.find() ){
+			for(int i=0;i<matcher.groupCount();i++){
+				System.out.println(matcher.group(i));
+			}
+		}
 		ArrayList<StkMenuItem> items = new ArrayList<StkMenuItem>();
 		items.add(new StkMenuItem("Section 1")); // FIXME this is nonsense
 		items.add(new StkMenuItem("Section 2")); // FIXME this is nonsense
 		return items;
 	}
-
+	
 	private String parseMenuTitle(String serialSendReceive) { // FIXME implement parsing properly
-		return "Random STK Thingy";
+		Matcher matcher = Pattern.compile("\\+STGI: (([0],)+)?\\\"[\\w ]+\\\"").matcher(serialSendReceive);
+		matcher.find();
+		String uncleanTitle = matcher.group();
+		uncleanTitle = uncleanTitle.replace("+STGI: ", "");
+		uncleanTitle = uncleanTitle.replace("\"", "");
+		return uncleanTitle;
 	}
 
 	private StkResponse getMenu(String menuResp) {

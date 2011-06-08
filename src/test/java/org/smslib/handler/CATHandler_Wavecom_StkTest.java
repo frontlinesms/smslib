@@ -38,6 +38,7 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 	public void testStkRootMenuRequest() throws SMSLibDeviceException, IOException {
 		// given
 		// mock response for root menu
+		//when(d.getResponse()).thenReturn("\r+STGI: \"Random STK Thingy\"\r+STGI: 1,2,\"Section 1\",0,0\r+STGI: 129,2,\"Section 2\",0,21\r\rOK");
 		when(d.getResponse()).thenReturn("\r+STGI: \"Random STK Thingy\"\r+STGI: 1,2,\"Section 1\",0,0\r+STGI: 129,2,\"Section 2\",0,21\r\rOK");
 		
 		// when
@@ -60,10 +61,10 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 	
 	public void testStkSubmenuRequest() throws SMSLibDeviceException, IOException {
 		// given
-		// TODO initialise responses for submenu
+		when(d.getResponse()).thenReturn("\r+STGI: \"Random STK Thingy\"\r+STGI: 1,2,\"Section 1\",0,0\r+STGI: 129,2,\"Section 2\",0,21\r\rOK");
 		
 		// when
-		h.stkRequest(new StkMenuItem("Section 2"));
+		StkResponse stkResponse = h.stkRequest(new StkMenuItem("Section 2"));
 		
 		// then
 		InOrder inOrder = inOrder(d);

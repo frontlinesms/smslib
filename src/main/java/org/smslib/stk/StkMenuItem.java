@@ -10,4 +10,8 @@ public class StkMenuItem extends StkRequest {
 	public String getText() {
 		return text;
 	}
+
+	public StkRequest getRequest() {
+		return new StkRequest();
+	}
 }

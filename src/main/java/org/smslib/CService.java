@@ -1614,7 +1614,7 @@ public class CService {
 		return atHandler.supportsStk();
 	}
 	
-	public StkResponse stkRequest(StkRequest request, String... variables) throws SMSLibDeviceException {
+	public StkResponse stkRequest(StkRequest request, String... variables) throws SMSLibDeviceException, IOException {
 		return atHandler.stkRequest(request, variables);
 	}
 }
