@@ -21,10 +21,16 @@
 
 package org.smslib.handler;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.apache.log4j.Logger;
 import org.smslib.CSerialDriver;
 import org.smslib.CService;
 import org.smslib.SMSLibDeviceException;
+import org.smslib.stk.StkMenu;
+import org.smslib.stk.StkMenuItem;
 import org.smslib.stk.StkRequest;
 import org.smslib.stk.StkResponse;
 
@@ -40,7 +46,86 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	
 	@Override
 	public StkResponse stkRequest(StkRequest request, String... variables)
-			throws SMSLibDeviceException {
-		return null; // FIXME implement this
+			throws SMSLibDeviceException, IOException {
+		
+		if(request.equals(StkRequest.GET_ROOT_MENU)) {
+			return parseMenu(serialSendReceive("AT+STGI=0"));
+		} else if(request instanceof StkMenuItem) {
+			return doMenuRequest((StkMenuItem) request);
+		} else return null;
+		
+//		// if the request is get_root_menu
+//		String initResponse = "";
+//		try {
+//			initResponse = serialSendReceive("AT+STSF=1");
+//			System.out.println("KIM - stkRequest:" + initResponse);
+//			initResponse = serialSendReceive("AT+STGI=0");
+//			System.out.println("KIM - stkRequest:" + initResponse);
+//		} catch (IOException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+//		if(notOk(initResponse)) {
+//			return StkResponse.ERROR;
+//		}
+//		return null;
+//			else {
+//			return new StkResponse(initResponse);
+//		}
+		
+//		String menuResp = null;
+//		try {
+//			menuResp = serialSendReceive("AT+STGI=0" + getMenuId(initResponse));
+//		} catch (IOException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+//		return getMenu(menuResp);
+		
+ 	}
+
+	private StkResponse doMenuRequest(StkMenuItem request) throws IOException {
+		// FIXME implement generation of request from StkMenuItem
+		// FIXME parse response from first request
+		// FIXME implement generation of second request
+		// TODO implement parsing of second response and creation of StkResponse (probably not necessary for this test)
+		serialSendReceive("AT+STGR=0,1,129"); // FIXME this is nonsense
+		serialSendReceive("AT+STGI=6"); // FIXME this is nonsense
+		return null; // FIXME this is nonsense
 	}
+
+	private StkResponse parseMenu(String serialSendReceive) {
+		String title = parseMenuTitle(serialSendReceive);
+		List<StkMenuItem> menuItems = parseMenuItems(serialSendReceive);
+		return new StkMenu(title, menuItems.toArray());
+	}
+
+	private List<StkMenuItem> parseMenuItems(String serialSendReceive) { // FIXME implement parsing properly
+		ArrayList<StkMenuItem> items = new ArrayList<StkMenuItem>();
+		items.add(new StkMenuItem("Section 1")); // FIXME this is nonsense
+		items.add(new StkMenuItem("Section 2")); // FIXME this is nonsense
+		return items;
+	}
+
+	private String parseMenuTitle(String serialSendReceive) { // FIXME implement parsing properly
+		return "Random STK Thingy";
+	}
+
+	private StkResponse getMenu(String menuResp) {
+		Object[] menu = menuResp.split("\n");
+		StkMenu m = new StkMenu(menuResp, menu);
+		return m;
+	}
+
+	private String getMenuId(String initResponse) {
+		// TODO Auto-generated method stub
+		return initResponse.substring(12);
+	}
+
+	private boolean notOk(String initResponse) {
+		// TODO Auto-generated method stub
+		return initResponse.contains("ERROR");
+	}
+	
+	
 }

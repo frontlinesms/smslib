@@ -35,7 +35,8 @@ public class CATHandler implements ATHandler {
 	 * Exceptionally fine logging level used when troubleshooting low-level problems with AT devices.
 	 * FIXME remove this and disable it
 	 */
-	private static final boolean TRACE = false;
+	//private static final boolean TRACE = false;
+	private static final boolean TRACE = true;
 	/** The value returned by {@link #sendMessage(int, String, String, String)} instead of a valid
 	 * SMSC reference number when sending a message failed. */
 	protected static final int SMSC_REF_NUMBER_SEND_FAILED = -1;
@@ -431,7 +432,7 @@ public class CATHandler implements ATHandler {
 		return false;
 	}
 
-	public StkResponse stkRequest(StkRequest request, String... variables) throws SMSLibDeviceException {
+	public StkResponse stkRequest(StkRequest request, String... variables) throws SMSLibDeviceException, IOException {
 		throw new NoStkSupportException();
 	}
 }

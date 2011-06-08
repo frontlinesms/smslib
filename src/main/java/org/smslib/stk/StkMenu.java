@@ -7,7 +7,7 @@ import java.util.List;
 public class StkMenu extends StkResponse {
 	private final String title;
 	private final List<StkMenuItem> menuItems;
-	
+
 	public StkMenu(String title, Object... menuItems) {
 		this.title = title;
 		
@@ -21,13 +21,21 @@ public class StkMenu extends StkResponse {
 		}
 		this.menuItems = Collections.unmodifiableList(tempMenuItems);
 	}
+	
+	public String getTitle() {
+		return title;
+	}
 
 	public StkRequest getRequest(String menuOption) throws StkMenuItemNotFoundException {
 		for(StkMenuItem m : this.menuItems) {
 			if(m.getText().equals(menuOption)) {
-				return m.getRequest();
+				return m;
 			}
 		}
 		throw new StkMenuItemNotFoundException();
+	}
+
+	public void addMenuItem(CharSequence subSequence) {
+		
 	}
 }

@@ -160,5 +160,5 @@ public interface ATHandler {
 
 	boolean supportsStk();
 	
-	StkResponse stkRequest(StkRequest request, String... variables) throws SMSLibDeviceException;
+	StkResponse stkRequest(StkRequest request, String... variables) throws SMSLibDeviceException, IOException;
 }
