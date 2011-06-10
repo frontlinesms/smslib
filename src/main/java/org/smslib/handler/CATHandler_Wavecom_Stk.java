@@ -37,6 +37,10 @@ import org.smslib.stk.StkRequest;
 import org.smslib.stk.StkResponse;
 
 public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
+	public String regexNumberComma = "([\\d])+(,)+";
+	public String regexNumber = "([\\d])+";
+	
+	
 	public CATHandler_Wavecom_Stk(CSerialDriver serialDriver, Logger log, CService srv) {
 		super(serialDriver, log, srv);
 	}
@@ -49,11 +53,18 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	@Override
 	public StkResponse stkRequest(StkRequest request, String... variables)
 			throws SMSLibDeviceException, IOException {
+		String initResponse="";
 		
 		if(request.equals(StkRequest.GET_ROOT_MENU)) {
-			return parseMenu(serialSendReceive("AT+STGI=0"));
+			initResponse = serialSendReceive("AT+STGI=0");
+			if (notOk(initResponse)){
+				return StkResponse.ERROR;
+			} else {
+				return parseMenu(initResponse,"0");
+			}
+			
 		} else if(request instanceof StkMenuItem) {
-			return doMenuRequest((StkMenuItem) request);
+			return doMenuRequest((StkMenuItem) request, variables);
 		} else return null;
 		
 //		// if the request is get_root_menu
@@ -75,64 +86,127 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 //			return new StkResponse(initResponse);
 //		}
 		
-//		String menuResp = null;
-//		try {
-//			menuResp = serialSendReceive("AT+STGI=0" + getMenuId(initResponse));
-//		} catch (IOException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-//		return getMenu(menuResp);
-		
  	}
 
-	private StkResponse doMenuRequest(StkMenuItem request) throws IOException {
-		// FIXME implement generation of request from StkMenuItem
-		// FIXME parse response from first request
-		// FIXME implement generation of second request
+	private StkResponse doMenuRequest(StkMenuItem request, String... variables) throws IOException {
+		String menuId;
+		String variable="";
+		String initResponse="";
+		// FIXME dev too specific to Send money response?
 		// TODO implement parsing of second response and creation of StkResponse (probably not necessary for this test)
-		serialSendReceive("AT+STGR=0,1,129"); // FIXME this is nonsense
-		serialSendReceive("AT+STGI=6"); // FIXME this is nonsense
-		return null; // FIXME this is nonsense
-	}
+		
+		// test if Item or menuItem
+		if ( request.getMenuItemId().equals("")){
+			//Item: add variables if any needed
+			if ( variables.length==1 ){
+				variable = "\r> "+ variables[0] + "<ctrl+z>";
+			}
+			
+			if ( !request.getText().contains("Send money")){
+				System.out.println("KIM: ITEM => get MenuItemId => AT+STGR="+ request.getMenuId()+",1");
+				initResponse = serialSendReceive("AT+STGR="+ request.getMenuId()+",1"+variable);
+				if (notOk(initResponse)){
+					return StkResponse.ERROR;
+					
+				} else {
+					menuId = getMenuId(initResponse);
+					System.out.println("AT+STGI="+menuId);
+					initResponse = serialSendReceive("AT+STGI="+menuId);
+					if (notOk(initResponse)){
+						return StkResponse.ERROR;
+					} else {
+						return (parseMenu(initResponse,menuId));
+					}
+				}
+			} else {
+				initResponse = serialSendReceive("AT+STGR="+ request.getMenuId()+",1");
+				if (notOk(initResponse)){
+					return StkResponse.ERROR;
+				} else {
+					System.out.println("AT+STGR="+ request.getMenuId()+",1");
+					return (parseMenu(initResponse,""));
+				}
+			}
+			
+		} else {
+			//MenuItem: retrieve next menu
+			initResponse = serialSendReceive("AT+STGR="+ request.getMenuId()+",1,"+request.getMenuItemId());
+			if (notOk(initResponse)){
+				return StkResponse.ERROR;
 
-	private StkResponse parseMenu(String serialSendReceive) {
-		String title = parseMenuTitle(serialSendReceive);
-		List<StkMenuItem> menuItems = parseMenuItems(serialSendReceive);
-		return new StkMenu(title, menuItems.toArray());
-	}
-
-	private List<StkMenuItem> parseMenuItems(String serialSendReceive) { // FIXME implement parsing properly
-		Matcher matcher = Pattern.compile("\\+STGI: ((([\\d])+,)+)?\\\"[\\w ]+\\\"").matcher(serialSendReceive);
-		if (matcher.find() ){
-			for(int i=0;i<matcher.groupCount();i++){
-				System.out.println(matcher.group(i));
+			} else {
+				menuId = getMenuId(initResponse);
+				initResponse = serialSendReceive("AT+STGI="+menuId);
+				if (notOk(initResponse)){
+					return StkResponse.ERROR;
+				} else {
+					System.out.println("KIM: MENUITEM => get MenuItemId for next Menu => AT+STGR="+ request.getMenuId()+",1,"+request.getMenuItemId());
+					System.out.println("AT+STGI="+menuId);
+					return (parseMenu(initResponse,menuId));
+				}
 			}
 		}
-		ArrayList<StkMenuItem> items = new ArrayList<StkMenuItem>();
-		items.add(new StkMenuItem("Section 1")); // FIXME this is nonsense
-		items.add(new StkMenuItem("Section 2")); // FIXME this is nonsense
-		return items;
+	}
+
+	private StkResponse parseMenu(String serialSendReceive, String menuId) {
+		String title = parseMenuTitle(serialSendReceive);
+		List<StkMenuItem> menuItems = parseMenuItems(serialSendReceive, menuId);
+		return new StkMenu(title, menuItems.toArray());
 	}
 	
-	private String parseMenuTitle(String serialSendReceive) { // FIXME implement parsing properly
-		Matcher matcher = Pattern.compile("\\+STGI: (([0],)+)?\\\"[\\w ]+\\\"").matcher(serialSendReceive);
-		matcher.find();
-		String uncleanTitle = matcher.group();
-		uncleanTitle = uncleanTitle.replace("+STGI: ", "");
-		uncleanTitle = uncleanTitle.replace("\"", "");
-		return uncleanTitle;
+	private String parseMenuTitle(String serialSendReceive) {
+		Matcher matcher = Pattern.compile("\\+STGI: (([0],)+)?\\\"([\\w](.)*)+\\\"").matcher(serialSendReceive);
+		if (matcher.find()){
+			String uncleanTitle = matcher.group();
+			uncleanTitle = uncleanTitle.replace("+STGI: ", "");
+			uncleanTitle = uncleanTitle.replace("\"", "");
+			uncleanTitle = uncleanTitle.replaceAll(regexNumberComma, "");
+			System.out.println("KIM CLEANTITLE: "+uncleanTitle);
+			return uncleanTitle;
+		} else {
+			System.out.println("KIM CLEANTITLE: Item");
+	        return "Item";	
+		}
+	}
+
+	private List<StkMenuItem> parseMenuItems(String serialSendReceive, String menuId) {
+		System.out.println("parseMenuItems");
+		ArrayList<StkMenuItem> items = new ArrayList<StkMenuItem>();
+		String uncleanTitle = "";
+		String menuItemId = "";
+
+		Matcher matcher = Pattern.compile("\\+STGI: ((([\\d])+,)(([\\d])+,)+)+\\\"([\\w](.)*)+\\\"").matcher(serialSendReceive);
+		while (matcher.find() ){
+			uncleanTitle = matcher.group();
+			// retrieve menuItemId
+			Matcher matcherMenuItemId = Pattern.compile(regexNumber).matcher(uncleanTitle);
+			if (matcherMenuItemId.find() && !matcherMenuItemId.group().equals("0")){
+				menuItemId = matcherMenuItemId.group();
+			}
+			// clean the title
+			uncleanTitle = uncleanTitle.replace("+STGI: ", "");
+			uncleanTitle = uncleanTitle.replace("\"", "");
+			uncleanTitle = uncleanTitle.replaceAll(regexNumberComma, "");
+
+			System.out.println("parseMenuItems cleanItemMenu:"+ uncleanTitle+"||menuId:"+menuId+"||MenuItemId:"+menuItemId);
+			items.add(new StkMenuItem(uncleanTitle,menuId,menuItemId));
+		}
+		return items;
 	}
 
 	private StkResponse getMenu(String menuResp) {
 		Object[] menu = menuResp.split("\n");
-		StkMenu m = new StkMenu(menuResp, menu);
+		StkMenu m = new StkMenu(menuResp);
 		return m;
 	}
 
-	private String getMenuId(String initResponse) {
-		// TODO Auto-generated method stub
-		return initResponse.substring(12);
+	// Function which is getting the menuId in the response.
+	private String getMenuId(String serialSendReceive) {
+		Matcher matcher = Pattern.compile("\\d").matcher(serialSendReceive);
+		if (matcher.find()){
+			return matcher.group();
+		}
+		return null;
 	}
 
 	private boolean notOk(String initResponse) {
