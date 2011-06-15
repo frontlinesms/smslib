@@ -62,39 +62,16 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 			} else {
 				return parseMenu(initResponse,"0");
 			}
-			
 		} else if(request instanceof StkMenuItem) {
 			return doMenuRequest((StkMenuItem) request, variables);
-		} else return null;
-		
-//		// if the request is get_root_menu
-//		String initResponse = "";
-//		try {
-//			initResponse = serialSendReceive("AT+STSF=1");
-//			System.out.println("KIM - stkRequest:" + initResponse);
-//			initResponse = serialSendReceive("AT+STGI=0");
-//			System.out.println("KIM - stkRequest:" + initResponse);
-//		} catch (IOException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-//		if(notOk(initResponse)) {
-//			return StkResponse.ERROR;
-//		}
-//		return null;
-//			else {
-//			return new StkResponse(initResponse);
-//		}
-		
+		} else return null;		
  	}
 
 	private StkResponse doMenuRequest(StkMenuItem request, String... variables) throws IOException {
 		String menuId;
 		String variable="";
 		String initResponse="";
-		// FIXME dev too specific to Send money response?
-		// TODO implement parsing of second response and creation of StkResponse (probably not necessary for this test)
-		
+	
 		// test if Item or menuItem
 		if ( request.getMenuItemId().equals("")){
 			//Item: add variables if any needed
@@ -103,14 +80,13 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 			}
 			
 			if ( !request.getText().contains("Send money")){
-				System.out.println("KIM: ITEM => get MenuItemId => AT+STGR="+ request.getMenuId()+",1");
+//				System.out.println("KIM: ITEM => get MenuItemId => AT+STGR="+ request.getMenuId()+",1");
 				initResponse = serialSendReceive("AT+STGR="+ request.getMenuId()+",1"+variable);
 				if (notOk(initResponse)){
 					return StkResponse.ERROR;
-					
 				} else {
 					menuId = getMenuId(initResponse);
-					System.out.println("AT+STGI="+menuId);
+					//System.out.println("AT+STGI="+menuId);
 					initResponse = serialSendReceive("AT+STGI="+menuId);
 					if (notOk(initResponse)){
 						return StkResponse.ERROR;
@@ -123,7 +99,7 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 				if (notOk(initResponse)){
 					return StkResponse.ERROR;
 				} else {
-					System.out.println("AT+STGR="+ request.getMenuId()+",1");
+					//System.out.println("AT+STGR="+ request.getMenuId()+",1");
 					return (parseMenu(initResponse,""));
 				}
 			}
@@ -140,8 +116,8 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 				if (notOk(initResponse)){
 					return StkResponse.ERROR;
 				} else {
-					System.out.println("KIM: MENUITEM => get MenuItemId for next Menu => AT+STGR="+ request.getMenuId()+",1,"+request.getMenuItemId());
-					System.out.println("AT+STGI="+menuId);
+//					System.out.println("KIM: MENUITEM => get MenuItemId for next Menu => AT+STGR="+ request.getMenuId()+",1,"+request.getMenuItemId());
+//					System.out.println("AT+STGI="+menuId);
 					return (parseMenu(initResponse,menuId));
 				}
 			}
@@ -161,10 +137,10 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 			uncleanTitle = uncleanTitle.replace("+STGI: ", "");
 			uncleanTitle = uncleanTitle.replace("\"", "");
 			uncleanTitle = uncleanTitle.replaceAll(regexNumberComma, "");
-			System.out.println("KIM CLEANTITLE: "+uncleanTitle);
+//			System.out.println("KIM CLEANTITLE: "+uncleanTitle);
 			return uncleanTitle;
 		} else {
-			System.out.println("KIM CLEANTITLE: Item");
+//			System.out.println("KIM CLEANTITLE: Item");
 	        return "Item";	
 		}
 	}

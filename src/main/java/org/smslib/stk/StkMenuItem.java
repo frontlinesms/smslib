@@ -28,4 +28,12 @@ public class StkMenuItem extends StkRequest {
 	public String getMenuItemId() {
 		return menuItemId;
 	}
+
+	public StkRequest getRequest() {
+		return this;
+	}
+	
+	public StkRequest getRequest(String string) {
+		return this;
+	}
 }
