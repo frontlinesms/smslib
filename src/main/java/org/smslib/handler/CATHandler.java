@@ -366,6 +366,7 @@ public class CATHandler implements ATHandler {
 	 * @throws IOException if access to {@link ATHandler#serialDriver} throws an {@link IOException}
 	 */
 	public String serialSendReceive(String command) throws IOException {
+		System.out.println(">>>>>>>>>>>>>>>>>>>>==="+command);
 		if(TRACE) log.info("ISSUING COMMAND: " + command);
 		if(TRACE) System.out.println("[" + Thread.currentThread().getName() + "] ISSUING COMMAND: " + command);
 		serialDriver.send(command + END_OF_LINE);
@@ -374,7 +375,7 @@ public class CATHandler implements ATHandler {
 		if(TRACE) System.out.println("[" + Thread.currentThread().getName() + "] RECEIVED RESPONSE: " + response);
 		return response;
 	}
-	
+
 	/**
 	 * Writes an AT command to the serial driver and retrieves the response.  The supplied
 	 * command will be prepended with "AT+" and appended with a \r.  If requested, any
@@ -430,6 +431,10 @@ public class CATHandler implements ATHandler {
 
 	public boolean supportsStk() {
 		return false;
+	}
+	
+	public void stkInit() throws SMSLibDeviceException, IOException {
+		if(!supportsStk()) throw new IllegalStateException("Cannot initialise STK if not supported.");
 	}
 
 	public StkResponse stkRequest(StkRequest request, String... variables) throws SMSLibDeviceException, IOException {

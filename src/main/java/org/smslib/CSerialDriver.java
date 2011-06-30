@@ -39,7 +39,7 @@ public class CSerialDriver implements SerialPortEventListener {
 	
 	private static final int DELAY = 500;
 
-	private static final int DELAY_AFTER_WRITE = 100;
+	private static final int DELAY_AFTER_WRITE = 500;
 
 	private static final int RECV_TIMEOUT = 30 * 1000;
 
@@ -201,6 +201,15 @@ public class CSerialDriver implements SerialPortEventListener {
 		while(dataAvailable()) inStream.read();
 	}
 
+	public String readAll() throws IOException {
+		StringBuilder bob = new StringBuilder();
+		int c;
+		while(!stopFlag && (c = inStream.read())!=-1) {
+			bob.append(c);
+		}
+		return bob.toString();
+	}
+
 	public void clearBuffer() throws IOException {
 		sleep_ignoreInterrupts(DELAY);
 		clearBufferCheckCMTI();
@@ -209,10 +218,16 @@ public class CSerialDriver implements SerialPortEventListener {
 	public void send(String s) throws IOException {
 		if (log != null) log.debug("TE: " + formatLog(new StringBuilder(s)));
 		if(TRACE_IO) System.out.println("> " + s);
+		
+		if (s.startsWith("AT+STGR=0,1,128")){
+			System.out.println();
+		}
+		
 		for (int i = 0; i < s.length(); i++) {
 			outStream.write((byte) s.charAt(i));
 		}
 		outStream.flush();
+		
 		sleep_ignoreInterrupts(DELAY_AFTER_WRITE);
 	}
 
@@ -239,7 +254,7 @@ public class CSerialDriver implements SerialPortEventListener {
 
 	public boolean dataAvailable() throws IOException {
 		int available = inStream.available();
-		return (!stopFlag && available > 0 ? true : false);
+		return !stopFlag && available>0;
 	}
 
 	public String getResponse() throws IOException {
@@ -258,7 +273,7 @@ public class CSerialDriver implements SerialPortEventListener {
 							break;
 						}
 						buffer.append((char) c);
-						if ((c == 0x0a) || (c == 0x0d)) break;
+						if ((c == '\r') || (c == '\n')) break;
 					}
 					String response = buffer.toString();
 

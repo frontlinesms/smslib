@@ -45,5 +45,7 @@ public class StkMenu extends StkResponse {
 		}
 		return StkMenuItem.ERROR;
 	}
-
+	public List<StkMenuItem> getMenuItems(){
+	  return this.menuItems;
+	 }
 }

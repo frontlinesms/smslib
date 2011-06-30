@@ -46,78 +46,111 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	}
 	
 	@Override
+	public void initStorageLocations() throws IOException {
+		storageLocations = "SMME";
+	}
+	
+	@Override
 	public boolean supportsStk() {
 		return true;
 	}
 	
 	@Override
-	public StkResponse stkRequest(StkRequest request, String... variables)
-			throws SMSLibDeviceException, IOException {
-		String initResponse="";
-		
-		if(request.equals(StkRequest.GET_ROOT_MENU)) {
-			initResponse = serialSendReceive("AT+STGI=0");
-			if (notOk(initResponse)){
-				return StkResponse.ERROR;
-			} else {
-				return parseMenu(initResponse,"0");
+	public void stkInit() throws SMSLibDeviceException, IOException {
+		srv.doSynchronized(new SynchronizedWorkflow<Object>() {
+			public Object run() throws IOException {
+				serialSendReceive("AT+CMEE=1");
+		 		serialSendReceive("AT+STSF=1");
+				String pinResponse = serialSendReceive("AT+CPIN?");
+				if(isWaitingForPin(pinResponse)) {
+					serialSendReceive("AT+CPIN="+srv.getSimPin());
+				}
+				return null;
 			}
-		} else if(request instanceof StkMenuItem) {
-			return doMenuRequest((StkMenuItem) request, variables);
-		} else return null;		
- 	}
-
-	private StkResponse doMenuRequest(StkMenuItem request, String... variables) throws IOException {
-		String menuId;
-		String variable="";
-		String initResponse="";
+		});
+	}
 	
-		// test if Item or menuItem
-		if ( request.getMenuItemId().equals("")){
-			//Item: add variables if any needed
-			if ( variables.length==1 ){
-				variable = "\r> "+ variables[0] + "<ctrl+z>";
-			}
-			
-			if ( !request.getText().contains("Send money")){
-//				System.out.println("KIM: ITEM => get MenuItemId => AT+STGR="+ request.getMenuId()+",1");
-				initResponse = serialSendReceive("AT+STGR="+ request.getMenuId()+",1"+variable);
-				if (notOk(initResponse)){
-					return StkResponse.ERROR;
-				} else {
-					menuId = getMenuId(initResponse);
-					//System.out.println("AT+STGI="+menuId);
-					initResponse = serialSendReceive("AT+STGI="+menuId);
+	@Override
+	public StkResponse stkRequest(final StkRequest request, final String... variables)
+			throws SMSLibDeviceException, IOException {
+		return srv.doSynchronized(new SynchronizedWorkflow<StkResponse>() {
+			public StkResponse run() throws IOException {
+				if(request.equals(StkRequest.GET_ROOT_MENU)) {
+					String initResponse = serialSendReceive("AT+STGI=0");
 					if (notOk(initResponse)){
 						return StkResponse.ERROR;
 					} else {
-						return (parseMenu(initResponse,menuId));
+						while(initResponse.contains("+STIN")) {
+							initResponse = serialSendReceive("AT+STGI=0");
+						}
+						return parseMenu(initResponse, "0");
+					}
+				} else if(request instanceof StkMenuItem) {
+					return doMenuRequest((StkMenuItem) request, variables);
+				} else return null;	
+			}
+		});
+ 	}
+
+	private StkResponse doMenuRequest(StkMenuItem request, String... variables) throws IOException {
+		// test if Item or menuItem
+		if (request.getMenuItemId().equals("")) {
+			if (!request.getText().contains("Send money")) { // FIXME DEFINITELY SHOULD NOT BE SPECIAL HANDLING HERE FOR SEND MONEY
+				String variable = variables.length==1? "\r> "+ variables[0] + "<ctrl+z>": "";
+				
+				// have to read all as pertinent information is supplied AFTER the "OK"
+				srv.serialDriver.send("AT+STGR="+ request.getMenuId()+",1"+variable+END_OF_LINE);
+				// TODO wait a bit...
+				String stgrResponse = srv.serialDriver.readAll();
+				
+				if (notOk(stgrResponse)) {
+					return StkResponse.ERROR;
+				} else {
+					String menuId = getMenuId(stgrResponse);
+					String stgiResponse = serialSendReceive("AT+STGI="+menuId);
+					if (notOk(stgiResponse)){
+						return StkResponse.ERROR;
+					} else {
+						while(stgiResponse.contains("+STIN")) {
+							stgiResponse = serialSendReceive("AT+STGI="+menuId);
+						}
+						return parseMenu(stgiResponse, menuId);
 					}
 				}
 			} else {
-				initResponse = serialSendReceive("AT+STGR="+ request.getMenuId()+",1");
-				if (notOk(initResponse)){
+				String initResponse = serialSendReceive("AT+STGR="+ request.getMenuId()+",1");
+				if (notOk(initResponse)) {
 					return StkResponse.ERROR;
 				} else {
-					//System.out.println("AT+STGR="+ request.getMenuId()+",1");
 					return (parseMenu(initResponse,""));
 				}
 			}
 			
 		} else {
 			//MenuItem: retrieve next menu
+			String initResponse="";
+			initResponse = serialSendReceive("AT+STGR=99");
 			initResponse = serialSendReceive("AT+STGR="+ request.getMenuId()+",1,"+request.getMenuItemId());
 			if (notOk(initResponse)){
-				return StkResponse.ERROR;
-
+				//return StkResponse.ERROR;
+				//if(StkResponse.ERROR.equals("+CME ERROR: 4")){
+					initResponse = serialSendReceive("AT+STGI=0");
+					if (notOk(initResponse)){
+						return StkResponse.ERROR;
+					} else {
+						return (parseMenu(initResponse,"6"));
+					}
+				/*}else{
+					return StkResponse.ERROR;
+				}*/
 			} else {
-				menuId = getMenuId(initResponse);
+				sleepWithoutInterruption(10000);
+				initResponse = srv.serialDriver.readAll();
+				String menuId = getMenuId(initResponse);
 				initResponse = serialSendReceive("AT+STGI="+menuId);
 				if (notOk(initResponse)){
 					return StkResponse.ERROR;
 				} else {
-//					System.out.println("KIM: MENUITEM => get MenuItemId for next Menu => AT+STGR="+ request.getMenuId()+",1,"+request.getMenuItemId());
-//					System.out.println("AT+STGI="+menuId);
 					return (parseMenu(initResponse,menuId));
 				}
 			}
@@ -170,15 +203,8 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 		return items;
 	}
 
-	private StkResponse getMenu(String menuResp) {
-		Object[] menu = menuResp.split("\n");
-		StkMenu m = new StkMenu(menuResp);
-		return m;
-	}
-
-	// Function which is getting the menuId in the response.
-	private String getMenuId(String serialSendReceive) {
-		Matcher matcher = Pattern.compile("\\d").matcher(serialSendReceive);
+	private String getMenuId(String response) {
+		Matcher matcher = Pattern.compile("\\d").matcher(response);
 		if (matcher.find()){
 			return matcher.group();
 		}
@@ -186,9 +212,6 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	}
 
 	private boolean notOk(String initResponse) {
-		// TODO Auto-generated method stub
 		return initResponse.contains("ERROR");
 	}
-	
-	
 }

@@ -33,6 +33,10 @@ import org.smslib.stk.StkRequest;
 import org.smslib.stk.StkResponse;
 
 public interface ATHandler {
+	public abstract class SynchronizedWorkflow<T> {
+		public abstract T run() throws SMSLibDeviceException, IOException;
+	}
+
 	void setStorageLocations(String loc);
 
 	boolean dataAvailable() throws IOException;
@@ -159,6 +163,8 @@ public interface ATHandler {
 	CService.Protocol getProtocol();
 
 	boolean supportsStk();
+	
+	void stkInit() throws SMSLibDeviceException, IOException;
 	
 	StkResponse stkRequest(StkRequest request, String... variables) throws SMSLibDeviceException, IOException;
 }
