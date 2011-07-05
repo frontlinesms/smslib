@@ -52,7 +52,7 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	
 	@Override
 	public StkResponse stkRequest(StkRequest request, String... variables)
-			throws SMSLibDeviceException, IOException {
+			throws SMSLibDeviceException, IOException {	
 		String initResponse="";
 		
 		if(request.equals(StkRequest.GET_ROOT_MENU)) {
@@ -64,43 +64,32 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 			}
 		} else if(request instanceof StkMenuItem) {
 			return doMenuRequest((StkMenuItem) request, variables);
-		} else return null;		
+		} else {
+			return StkResponse.ERROR;
+		}
  	}
 
-	private StkResponse doMenuRequest(StkMenuItem request, String... variables) throws IOException {
+	private StkResponse doMenuRequest(StkMenuItem request, String... inputVariable) throws IOException {
 		String menuId;
 		String variable="";
 		String initResponse="";
 	
 		// test if Item or menuItem
-		if ( request.getMenuItemId().equals("")){
-			//Item: add variables if any needed
-			if ( variables.length==1 ){
-				variable = "\r> "+ variables[0] + "<ctrl+z>";
+		if ( request.getMenuItemId().equals("")){//Item
+			if ( inputVariable.length==1 ){
+				variable = "\r> "+ inputVariable[0] + "<ctrl+z>";
 			}
-			
-			if ( !request.getText().contains("Send money")){
-//				System.out.println("KIM: ITEM => get MenuItemId => AT+STGR="+ request.getMenuId()+",1");
-				initResponse = serialSendReceive("AT+STGR="+ request.getMenuId()+",1"+variable);
-				if (notOk(initResponse)){
-					return StkResponse.ERROR;
-				} else {
-					menuId = getMenuId(initResponse);
-					//System.out.println("AT+STGI="+menuId);
-					initResponse = serialSendReceive("AT+STGI="+menuId);
-					if (notOk(initResponse)){
-						return StkResponse.ERROR;
-					} else {
-						return (parseMenu(initResponse,menuId));
-					}
-				}
+
+			initResponse = serialSendReceive("AT+STGR="+ request.getMenuId()+",1,1"+variable);
+			if (notOk(initResponse)){
+				return StkResponse.ERROR;
 			} else {
-				initResponse = serialSendReceive("AT+STGR="+ request.getMenuId()+",1");
+				menuId = getMenuId(initResponse);
+				initResponse = serialSendReceive("AT+STGI="+menuId);
 				if (notOk(initResponse)){
 					return StkResponse.ERROR;
 				} else {
-					//System.out.println("AT+STGR="+ request.getMenuId()+",1");
-					return (parseMenu(initResponse,""));
+					return (parseMenu(initResponse,menuId));
 				}
 			}
 			
@@ -116,8 +105,6 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 				if (notOk(initResponse)){
 					return StkResponse.ERROR;
 				} else {
-//					System.out.println("KIM: MENUITEM => get MenuItemId for next Menu => AT+STGR="+ request.getMenuId()+",1,"+request.getMenuItemId());
-//					System.out.println("AT+STGI="+menuId);
 					return (parseMenu(initResponse,menuId));
 				}
 			}
@@ -131,16 +118,22 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	}
 	
 	private String parseMenuTitle(String serialSendReceive) {
-		Matcher matcher = Pattern.compile("\\+STGI: (([0],)+)?\\\"([\\w](.)*)+\\\"").matcher(serialSendReceive);
-		if (matcher.find()){
-			String uncleanTitle = matcher.group();
-			uncleanTitle = uncleanTitle.replace("+STGI: ", "");
-			uncleanTitle = uncleanTitle.replace("\"", "");
-			uncleanTitle = uncleanTitle.replaceAll(regexNumberComma, "");
-//			System.out.println("KIM CLEANTITLE: "+uncleanTitle);
-			return uncleanTitle;
-		} else {
-//			System.out.println("KIM CLEANTITLE: Item");
+		Matcher matcher = Pattern.compile("\\+STGI: ((([\\d])+,)+)?(\\\"[\\w -.]+\\\")?").matcher(serialSendReceive);
+		//Test to find out if the string is an inputRequirement
+		String[] splitSerialSendReceive = serialSendReceive.split("\\+STGI");
+		if (splitSerialSendReceive.length > 2){
+			if (matcher.find()){
+				String uncleanTitle = matcher.group();
+				uncleanTitle = uncleanTitle.replace("+STGI: ", "");
+				uncleanTitle = uncleanTitle.replace("\"", "");
+				uncleanTitle = uncleanTitle.replaceAll(regexNumberComma, "");
+				return uncleanTitle;
+			} else {
+				//TODO
+				return "ERROR TITLE";
+			}
+		}
+		 else {
 	        return "Item";	
 		}
 	}
@@ -150,8 +143,17 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 		ArrayList<StkMenuItem> items = new ArrayList<StkMenuItem>();
 		String uncleanTitle = "";
 		String menuItemId = "";
+		
+		// KODOS : \+STGI: (([\d])+,)+(\")*(.*)
+		Matcher matcher = Pattern.compile("\\+STGI: ((([\\d])+,)+)?(\\\"[\\w -.]+\\\")?").matcher(serialSendReceive);
 
-		Matcher matcher = Pattern.compile("\\+STGI: ((([\\d])+,)(([\\d])+,)+)+\\\"([\\w](.)*)+\\\"").matcher(serialSendReceive);
+		//Test to find out if the string is an inputRequirement or not
+		String[] splitSerialSendReceive = serialSendReceive.split("\\+STGI");
+		if (splitSerialSendReceive.length > 2){
+			//skip title
+			matcher.find();
+		}
+		
 		while (matcher.find() ){
 			uncleanTitle = matcher.group();
 			// retrieve menuItemId
@@ -168,12 +170,6 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 			items.add(new StkMenuItem(uncleanTitle,menuId,menuItemId));
 		}
 		return items;
-	}
-
-	private StkResponse getMenu(String menuResp) {
-		Object[] menu = menuResp.split("\n");
-		StkMenu m = new StkMenu(menuResp);
-		return m;
 	}
 
 	// Function which is getting the menuId in the response.
