@@ -37,9 +37,9 @@ public class CSerialDriver implements SerialPortEventListener {
 	private static final boolean TRACE_IO = false;
 	private static final boolean DEBUG = false;
 	
-	private static final int DELAY = 500;
+	private static final int DELAY = 1000;
 
-	private static final int DELAY_AFTER_WRITE = 500;
+	private static final int DELAY_AFTER_WRITE = 1000;
 
 	private static final int RECV_TIMEOUT = 30 * 1000;
 
@@ -47,6 +47,8 @@ public class CSerialDriver implements SerialPortEventListener {
 	
 	/** The name of the serial port this conencts to. */
 	private String port;
+	
+	private String lastAtCommand;
 	
 	private int baud;
 
@@ -216,16 +218,35 @@ public class CSerialDriver implements SerialPortEventListener {
 	}
 
 	public void send(String s) throws IOException {
+		this.lastAtCommand = s;
 		if (log != null) log.debug("TE: " + formatLog(new StringBuilder(s)));
 		if(TRACE_IO) System.out.println("> " + s);
 		
-		if (s.startsWith("AT+STGR=0,1,128")){
+		if (s.startsWith("AT+STGR=0,1,128") || s.startsWith("AT+STGR=0,1,1")){
 			System.out.println();
 		}
 		
 		for (int i = 0; i < s.length(); i++) {
 			outStream.write((byte) s.charAt(i));
 		}
+		outStream.flush();
+		
+		sleep_ignoreInterrupts(DELAY_AFTER_WRITE);
+	}
+	
+	public void send(String s, byte eF) throws IOException {
+		this.lastAtCommand = s;
+		if (log != null) log.debug("TE: " + formatLog(new StringBuilder(s)));
+		if(TRACE_IO) System.out.println("> " + s);
+		
+		if (s.startsWith("AT+STGR=0,1,128") || s.startsWith("AT+STGR=0,1,1")){
+			System.out.println();
+		}
+		
+		for (int i = 0; i < s.length(); i++) {
+			outStream.write((byte) s.charAt(i));
+		}
+		outStream.write(eF);
 		outStream.flush();
 		
 		sleep_ignoreInterrupts(DELAY_AFTER_WRITE);
@@ -278,7 +299,9 @@ public class CSerialDriver implements SerialPortEventListener {
 					String response = buffer.toString();
 
 					if(response.length() == 0
-							|| response.matches("\\s*[\\p{ASCII}]*\\s+OK\\s")
+							//|| response.matches("\\s*[\\p{ASCII}]*\\s+OK\\s")
+							
+							//|| response.matches("\\s*[\\p{ASCII}]*\\s+OK\\s")
 							// if (response.matches("\\s*[\\p{ASCII}]*\\s+READY\\s+OK\\s")
 							|| response.matches("\\s*[\\p{ASCII}]*\\s+READY\\s+")
 							|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR\\s")
@@ -289,6 +312,27 @@ public class CSerialDriver implements SerialPortEventListener {
 						buffer.delete(0, buffer.length());
 						if (newMsgMonitor != null) newMsgMonitor.raise(CNewMsgMonitor.CMTI);
 						continue;
+					}
+					Matcher matcher = Pattern.compile("AT[+]STGR[=|,|\\d]").matcher(this.lastAtCommand);
+					if(matcher.find()){
+						matcher = Pattern.compile("\\s*[\\p{ASCII}]*\\s*+STIN: \\d+\\s*").matcher(response);
+						
+						if (matcher.find()
+						|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR\\s")
+						|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR: \\d+\\s")) break;
+					}else{
+						matcher = Pattern.compile("AT").matcher(this.lastAtCommand);
+						if(matcher.find()){
+							matcher = Pattern.compile("\\s*[\\p{ASCII}]*\\s*+STIN: \\d+\\s*").matcher(response);
+							
+							if (matcher.find()
+							|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR\\s")
+							|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR: \\d+\\s")) break;
+						}else{
+							if(response.matches("\\s*[\\p{ASCII}]*\\s+OK\\s")){
+								break;
+							}
+						}
 					}
 				}
 				retry = MAX_RETRIES;

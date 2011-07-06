@@ -76,13 +76,49 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 		return srv.doSynchronized(new SynchronizedWorkflow<StkResponse>() {
 			public StkResponse run() throws IOException {
 				if(request.equals(StkRequest.GET_ROOT_MENU)) {
+					String initResponse2 = serialSendReceive("AT+STGR=99");
+					// if STIN+ val = 6... got to MPESA menu
+					// if STIN+ val =99... get root menu
 					String initResponse = serialSendReceive("AT+STGI=0");
+					String initResponse1 = serialSendReceive("AT+STGR=0,1,1");
+					String p ="";
 					if (notOk(initResponse)){
+						initResponse = serialSendReceive("AT+STGI=6");
+						initResponse1 = serialSendReceive("AT+STGR=6,1,1");
+						initResponse = serialSendReceive("AT+STGI=6");
+						initResponse1 = serialSendReceive("AT+STGR=6,1,2");
+						initResponse = serialSendReceive("AT+STGI=3");
 						return StkResponse.ERROR;
 					} else {
 						while(initResponse.contains("+STIN")) {
 							initResponse = serialSendReceive("AT+STGI=0");
 						}
+						
+						initResponse = serialSendReceive("AT+STGI=6");
+						initResponse1 = serialSendReceive("AT+STGR=6,1,1");
+						initResponse = serialSendReceive("AT+STGI=6");
+						initResponse1 = serialSendReceive("AT+STGR=6,1,2");
+						
+						initResponse = serialSendReceive("AT+STGI=3");
+						initResponse1 = serialSendReceive("AT+STGR=3,1,1");
+						initResponse1 = serialSendReceive("0704593656");
+						
+						initResponse = serialSendReceive("AT+STGI=3");
+						initResponse1 = serialSendReceive("AT+STGR=3,1,1");
+						initResponse1 = serialSendReceive("50");
+						
+						initResponse = serialSendReceive("AT+STGI=3");
+						initResponse1 = serialSendReceive("AT+STGR=3,1,1");
+						initResponse1 = serialSendReceive("0011");
+						
+						initResponse = serialSendReceive("AT+STGI=1");
+						initResponse1 = serialSendReceive("AT+STGR=1,1,1");
+
+						initResponse = serialSendReceive("AT+STGI=9");
+						initResponse1 = serialSendReceive("AT+STGR=1,1,1");
+						
+						String pu ="";
+						initResponse = serialSendReceive("AT+STGI=6");
 						return parseMenu(initResponse, "0");
 					}
 				} else if(request instanceof StkMenuItem) {
@@ -129,18 +165,17 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 		} else {
 			//MenuItem: retrieve next menu
 			String initResponse="";
-			initResponse = serialSendReceive("AT+STGR=99");
 			initResponse = serialSendReceive("AT+STGR="+ request.getMenuId()+",1,"+request.getMenuItemId());
 			if (notOk(initResponse)){
-				//return StkResponse.ERROR;
-				//if(StkResponse.ERROR.equals("+CME ERROR: 4")){
+				return StkResponse.ERROR;
+				/*if(StkResponse.ERROR.equals("+CME ERROR: 4")){
 					initResponse = serialSendReceive("AT+STGI=0");
 					if (notOk(initResponse)){
 						return StkResponse.ERROR;
 					} else {
 						return (parseMenu(initResponse,"6"));
 					}
-				/*}else{
+				}else{
 					return StkResponse.ERROR;
 				}*/
 			} else {
