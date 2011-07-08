@@ -35,10 +35,12 @@ import org.smslib.stk.StkMenu;
 import org.smslib.stk.StkMenuItem;
 import org.smslib.stk.StkRequest;
 import org.smslib.stk.StkResponse;
+import org.smslib.stk.StkInputRequiremnent;
 
 public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	public String regexNumberComma = "([\\d])+(,)+";
 	public String regexNumber = "([\\d])+";
+	private String getNewSessionId = "";
 	
 	
 	public CATHandler_Wavecom_Stk(CSerialDriver serialDriver, Logger log, CService srv) {
@@ -69,57 +71,57 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 			}
 		});
 	}
+
+	public boolean stkStartNewSession() throws SMSLibDeviceException, IOException {
+		String initResponse = serialSendReceive("AT+STGR=99");
+		if (notOk(initResponse)){
+			if(initResponse.contains("+CME ERROR: 3")){
+				return true;
+			}else{
+				return false;
+			}
+		} else {
+			String menuId = getMenuId(initResponse);
+			getNewSessionId = menuId;
+			if(menuId.equals("99")){
+				return true;
+			}else if(menuId.equals("6")){
+				initResponse = serialSendReceive("AT+STGR=99");
+				if (notOk(initResponse)){
+				} else {
+					return true;
+				}
+				//return false;
+			}
+		}
+		return true;
+	}
 	
 	@Override
 	public StkResponse stkRequest(final StkRequest request, final String... variables)
 			throws SMSLibDeviceException, IOException {
 		return srv.doSynchronized(new SynchronizedWorkflow<StkResponse>() {
-			public StkResponse run() throws IOException {
+			public StkResponse run() throws IOException, SMSLibDeviceException {	
 				if(request.equals(StkRequest.GET_ROOT_MENU)) {
-					String initResponse2 = serialSendReceive("AT+STGR=99");
-					// if STIN+ val = 6... got to MPESA menu
-					// if STIN+ val =99... get root menu
-					String initResponse = serialSendReceive("AT+STGI=0");
-					String initResponse1 = serialSendReceive("AT+STGR=0,1,1");
-					String p ="";
-					if (notOk(initResponse)){
-						initResponse = serialSendReceive("AT+STGI=6");
-						initResponse1 = serialSendReceive("AT+STGR=6,1,1");
-						initResponse = serialSendReceive("AT+STGI=6");
-						initResponse1 = serialSendReceive("AT+STGR=6,1,2");
-						initResponse = serialSendReceive("AT+STGI=3");
-						return StkResponse.ERROR;
-					} else {
-						while(initResponse.contains("+STIN")) {
-							initResponse = serialSendReceive("AT+STGI=0");
-						}
-						
-						initResponse = serialSendReceive("AT+STGI=6");
-						initResponse1 = serialSendReceive("AT+STGR=6,1,1");
-						initResponse = serialSendReceive("AT+STGI=6");
-						initResponse1 = serialSendReceive("AT+STGR=6,1,2");
-						
-						initResponse = serialSendReceive("AT+STGI=3");
-						initResponse1 = serialSendReceive("AT+STGR=3,1,1");
-						initResponse1 = serialSendReceive("0704593656");
-						
-						initResponse = serialSendReceive("AT+STGI=3");
-						initResponse1 = serialSendReceive("AT+STGR=3,1,1");
-						initResponse1 = serialSendReceive("50");
-						
-						initResponse = serialSendReceive("AT+STGI=3");
-						initResponse1 = serialSendReceive("AT+STGR=3,1,1");
-						initResponse1 = serialSendReceive("0011");
-						
-						initResponse = serialSendReceive("AT+STGI=1");
-						initResponse1 = serialSendReceive("AT+STGR=1,1,1");
+					String initResponse = "";
 
-						initResponse = serialSendReceive("AT+STGI=9");
-						initResponse1 = serialSendReceive("AT+STGR=1,1,1");
-						
-						String pu ="";
-						initResponse = serialSendReceive("AT+STGI=6");
-						return parseMenu(initResponse, "0");
+					if(stkStartNewSession()){
+						initResponse = serialSendReceive("AT+STGI=0");
+						if (notOk(initResponse)){
+							return StkResponse.ERROR;
+						} else {
+							while(initResponse.contains("+STIN")) {
+								try {
+									stkRequest(StkRequest.GET_ROOT_MENU);
+								} catch (SMSLibDeviceException e) {
+									// TODO Auto-generated catch block
+									e.printStackTrace();
+								}
+							}
+							return parseMenu(initResponse, "0");
+						}	
+					} else {
+						return doMenuRequest((StkMenuItem) request, getNewSessionId);
 					}
 				} else if(request instanceof StkMenuItem) {
 					return doMenuRequest((StkMenuItem) request, variables);
@@ -132,25 +134,43 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 		// test if Item or menuItem
 		if (request.getMenuItemId().equals("")) {
 			if (!request.getText().contains("Send money")) { // FIXME DEFINITELY SHOULD NOT BE SPECIAL HANDLING HERE FOR SEND MONEY
-				String variable = variables.length==1? "\r> "+ variables[0] + "<ctrl+z>": "";
+				String variable = variables.length==1? variables[0] : "";
 				
 				// have to read all as pertinent information is supplied AFTER the "OK"
-				srv.serialDriver.send("AT+STGR="+ request.getMenuId()+",1"+variable+END_OF_LINE);
+				String stgrResponse = serialSendReceive("AT+STGR="+ request.getMenuId()+",1"+request.getMenuItemId());
 				// TODO wait a bit...
-				String stgrResponse = srv.serialDriver.readAll();
-				
 				if (notOk(stgrResponse)) {
 					return StkResponse.ERROR;
 				} else {
-					String menuId = getMenuId(stgrResponse);
-					String stgiResponse = serialSendReceive("AT+STGI="+menuId);
-					if (notOk(stgiResponse)){
+					stgrResponse = serialSendReceive(variable);
+					if (notOk(stgrResponse)) {
 						return StkResponse.ERROR;
 					} else {
-						while(stgiResponse.contains("+STIN")) {
-							stgiResponse = serialSendReceive("AT+STGI="+menuId);
+						String menuId = getMenuId(stgrResponse);
+						String stgiResponse = serialSendReceive("AT+STGI="+menuId);
+						if (notOk(stgiResponse)){
+							return StkResponse.ERROR;
+						} else {
+							while(stgiResponse.contains("+STIN")) {
+								stgiResponse = serialSendReceive("AT+STGI="+menuId);
+							}
+							if(menuId.equals("1")){
+								String stgrRequest = serialSendReceive("AT+STGR=1,1,1");
+								if (notOk(stgrRequest)) {
+									return StkResponse.ERROR;
+								} else {
+									menuId = getMenuId(stgrRequest);
+									stgiResponse = serialSendReceive("AT+STGI="+menuId);
+									if (notOk(stgiResponse)) {
+										return StkResponse.ERROR;
+									} else {
+										menuId = getMenuId(stgiResponse);
+										return parseMenu(stgiResponse, menuId);
+									}
+								}
+							}
+							return parseMenu(stgiResponse, menuId);
 						}
-						return parseMenu(stgiResponse, menuId);
 					}
 				}
 			} else {
@@ -168,19 +188,7 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 			initResponse = serialSendReceive("AT+STGR="+ request.getMenuId()+",1,"+request.getMenuItemId());
 			if (notOk(initResponse)){
 				return StkResponse.ERROR;
-				/*if(StkResponse.ERROR.equals("+CME ERROR: 4")){
-					initResponse = serialSendReceive("AT+STGI=0");
-					if (notOk(initResponse)){
-						return StkResponse.ERROR;
-					} else {
-						return (parseMenu(initResponse,"6"));
-					}
-				}else{
-					return StkResponse.ERROR;
-				}*/
 			} else {
-				sleepWithoutInterruption(10000);
-				initResponse = srv.serialDriver.readAll();
 				String menuId = getMenuId(initResponse);
 				initResponse = serialSendReceive("AT+STGI="+menuId);
 				if (notOk(initResponse)){
@@ -198,19 +206,25 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 		return new StkMenu(title, menuItems.toArray());
 	}
 	
-	private String parseMenuTitle(String serialSendReceive) {
-		Matcher matcher = Pattern.compile("\\+STGI: (([0],)+)?\\\"([\\w](.)*)+\\\"").matcher(serialSendReceive);
-		if (matcher.find()){
-			String uncleanTitle = matcher.group();
-			uncleanTitle = uncleanTitle.replace("+STGI: ", "");
-			uncleanTitle = uncleanTitle.replace("\"", "");
-			uncleanTitle = uncleanTitle.replaceAll(regexNumberComma, "");
-//			System.out.println("KIM CLEANTITLE: "+uncleanTitle);
-			return uncleanTitle;
-		} else {
-//			System.out.println("KIM CLEANTITLE: Item");
-	        return "Item";	
-		}
+	 private String parseMenuTitle(String serialSendReceive) {
+		  Matcher matcher = Pattern.compile("\\+STGI: ((([\\d])+,)+)?(\\\"[\\w -.]+\\\")?").matcher(serialSendReceive);
+		  //Test to find out if the string is an inputRequirement
+		  String[] splitSerialSendReceive = serialSendReceive.split("\\+STGI");
+		  if (splitSerialSendReceive.length > 2){
+		   if (matcher.find()){
+		    String uncleanTitle = matcher.group();
+		    uncleanTitle = uncleanTitle.replace("+STGI: ", "");
+		    uncleanTitle = uncleanTitle.replace("\"", "");
+		    uncleanTitle = uncleanTitle.replaceAll(regexNumberComma, "");
+		    return uncleanTitle;
+		   } else {
+		    //TODO
+		    return "ERROR TITLE";
+		   }
+		  }
+		   else {
+		         return "Item"; 
+		  }
 	}
 
 	private List<StkMenuItem> parseMenuItems(String serialSendReceive, String menuId) {
@@ -239,7 +253,7 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	}
 
 	private String getMenuId(String response) {
-		Matcher matcher = Pattern.compile("\\d").matcher(response);
+		Matcher matcher = Pattern.compile("\\d+").matcher(response);
 		if (matcher.find()){
 			return matcher.group();
 		}

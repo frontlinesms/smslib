@@ -323,15 +323,15 @@ public class CSerialDriver implements SerialPortEventListener {
 					}else{
 						matcher = Pattern.compile("AT").matcher(this.lastAtCommand);
 						if(matcher.find()){
+							if(response.matches("\\s*[\\p{ASCII}]*\\s+OK\\s")){
+								break;
+							}
+						}else{
 							matcher = Pattern.compile("\\s*[\\p{ASCII}]*\\s*+STIN: \\d+\\s*").matcher(response);
 							
 							if (matcher.find()
 							|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR\\s")
 							|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR: \\d+\\s")) break;
-						}else{
-							if(response.matches("\\s*[\\p{ASCII}]*\\s+OK\\s")){
-								break;
-							}
 						}
 					}
 				}

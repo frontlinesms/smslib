@@ -1,11 +1,11 @@
 package org.smslib.stk;
 
-public class StkInputRequiremnent extends StkResponse {
+public class StkInputRequiremnent extends StkMenu {
  private StkMenu stkMenu;//stkMenu from which the inputRequirement is generated from
 
 
  public StkInputRequiremnent(StkMenu stkMenu) {
-  super();
+  super(stkMenu.getTitle(), stkMenu.getMenuItems());
   this.stkMenu = stkMenu;
  }
 
