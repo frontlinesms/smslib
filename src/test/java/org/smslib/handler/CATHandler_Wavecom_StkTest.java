@@ -80,6 +80,7 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 		when(d.getResponse()).thenReturn("OK\n+STIN: 1",
 				"+STGI: 1,\"Send money to 0704593656\nKsh50\",1\nOK",
 				"OK");
+		
 		StkRequest pinEntrySubmitRequest = new StkValuePrompt().getRequest();
 		
 		// when
@@ -146,8 +147,27 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 		assertTrue(phoneNumberSubmitResponse instanceof StkResponse);
 	}
 	
-	public void testStkSubmenuRequest() {
-		fail();
+	public void testStkSubmenuRequest() throws SMSLibDeviceException, IOException {
+		// given
+		when(d.getResponse()).thenReturn("OK\n+STIN: 6",
+				"+STGI: 0,0,0,\"M-PESA\"\n+STGI: 1,7,\"Send money\",0\n+STGI: 2,7,\"Withdraw cash\",0\n+STGI: 3,7,\"Buy airtime\",0\n+STGI: 4,7,\"Pay Bill\",0\n+STGI: 5,7,\"Buy Goods\",0\n+STGI: 6,7,\"ATM Withdrawal\",0\n+STGI: 7,7,\"My account\",0\nOK");
+		StkRequest submenuRequest = new StkMenuItem("M-PESA", "0", "1");
+		
+		// when we request a submenu
+		StkResponse submenuResponse = h.stkRequest(submenuRequest);
+		
+		// then we are given the items in that menu
+		verify(d).send("AT+STGR=0,1,1\r");
+		verify(d).send("AT+STGI=6\r");
+		assertTrue(submenuResponse instanceof StkMenu);
+		
+		// when we request an item from the submenu
+		h.stkRequest(((StkMenu) submenuResponse).getRequest("Send money"));
+		
+		// then correct menu item is corrected
+		// FIXME following verify's should be inorder
+		verify(d).send("AT+STGR=6,1,1\r");
+		verify(d).send("AT+STGI=6\r");
 	}
 	
 	public void testStkErrorRequest() throws SMSLibDeviceException, IOException {
@@ -155,11 +175,15 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 		when(d.getResponse()).thenReturn("\rERROR\r");
 		
 		// when
-		StkResponse rootMenuResponse = h.stkRequest(StkRequest.GET_ROOT_MENU);
+		try {
+			h.stkRequest(StkRequest.GET_ROOT_MENU);
+			fail();
+		} catch(SMSLibDeviceException ex) {
+			// expected
+		}
 		
-		// then
-		verify(d).send("AT+STGI=0\r");
-		assertTrue(rootMenuResponse.equals(StkResponse.ERROR));
+		// then the handler should have tried to start the session
+		verify(d).send("AT+STGR=99\r");
 	}
 	
 	public void testInitStkWithoutPin() throws Exception {

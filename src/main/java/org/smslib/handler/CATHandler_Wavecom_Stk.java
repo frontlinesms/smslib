@@ -156,8 +156,9 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 
 	private StkResponse doMenuRequest(StkMenuItem request) throws IOException {
 		String initialResponse = serialSendReceive("AT+STGR=" + request.getMenuId() + ",1," + request.getMenuItemId());
-		String secondaryResponse = serialSendReceive("AT+STGI=" + extractNumber(initialResponse, 1));
-		return parseStkResponse(secondaryResponse, request.getMenuId());
+		String newMenuId = extractNumber(initialResponse, 1);
+		String secondaryResponse = serialSendReceive("AT+STGI=" + newMenuId);
+		return parseStkResponse(secondaryResponse, newMenuId);
 	}
 
 	/** Extract the nth set of digits from the supplied string */
@@ -285,7 +286,7 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 			uncleanTitle = uncleanTitle.replaceAll(regexNumberComma, "");
 
 			System.out.println("parseMenuItems cleanItemMenu:"+ uncleanTitle+"||menuId:"+menuId+"||MenuItemId:"+menuItemId);
-			items.add(new StkMenuItem(uncleanTitle,menuId,menuItemId));
+			items.add(new StkMenuItem(uncleanTitle, menuId, menuItemId));
 		}
 		return items;
 	}
