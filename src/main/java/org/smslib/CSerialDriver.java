@@ -232,24 +232,6 @@ public class CSerialDriver implements SerialPortEventListener {
 		outStream.flush();
 		sleep_ignoreInterrupts(DELAY_AFTER_WRITE);
 	}
-	
-	public void send(String s, byte eF) throws IOException {
-		this.lastAtCommand = s;
-		if (log != null) log.debug("TE: " + formatLog(new StringBuilder(s)));
-		if(TRACE_IO) System.out.println("> " + s);
-		
-		if (s.startsWith("AT+STGR=0,1,128") || s.startsWith("AT+STGR=0,1,1")){
-			System.out.println();
-		}
-		
-		for (int i = 0; i < s.length(); i++) {
-			outStream.write((byte) s.charAt(i));
-		}
-		outStream.write(eF);
-		outStream.flush();
-		
-		sleep_ignoreInterrupts(DELAY_AFTER_WRITE);
-	}
 
 	public void send(char c) throws IOException {
 		outStream.write((byte) c);

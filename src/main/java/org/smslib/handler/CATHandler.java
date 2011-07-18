@@ -23,8 +23,6 @@ package org.smslib.handler;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.smslib.*;
 import org.smslib.CService.MessageClass;
@@ -52,8 +50,6 @@ public class CATHandler implements ATHandler {
 	
 	/** Character used to terminate a line after an AT command */
 	protected static final String END_OF_LINE = "\r";
-	/****/
-	protected static final byte END_OF_FILE = 0x1A;
 	
 	/** AT Command for switching echo off */
 	private static final String AT_ECHO_OFF = "ATE0";
@@ -374,12 +370,7 @@ public class CATHandler implements ATHandler {
 	public String serialSendReceive(String command) throws IOException {
 		if(TRACE) log.info("ISSUING COMMAND: " + command);
 		if(TRACE) System.out.println("[" + Thread.currentThread().getName() + "] ISSUING COMMAND: " + command);
-		Matcher matcher = Pattern.compile("AT").matcher(command);
-		if(matcher.find()){
-			serialDriver.send(command + END_OF_LINE);
-		}else{
-			serialDriver.send(command, END_OF_FILE);
-		}
+		serialDriver.send(command + END_OF_LINE);
 		String response = serialDriver.getResponse();
 		if(TRACE) log.info("RECEIVED RESPONSE: " + response);
 		if(TRACE) System.out.println("[" + Thread.currentThread().getName() + "] RECEIVED RESPONSE: " + response);

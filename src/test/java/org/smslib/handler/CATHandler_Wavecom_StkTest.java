@@ -10,10 +10,13 @@ import org.smslib.CSerialDriver;
 import org.smslib.CService;
 import org.smslib.SMSLibDeviceException;
 import org.smslib.handler.ATHandler.SynchronizedWorkflow;
+import org.smslib.stk.StkConfirmationPrompt;
+import org.smslib.stk.StkConfirmationPromptResponse;
 import org.smslib.stk.StkMenu;
 import org.smslib.stk.StkMenuItem;
 import org.smslib.stk.StkRequest;
 import org.smslib.stk.StkResponse;
+import org.smslib.stk.StkValuePrompt;
 
 import net.frontlinesms.junit.BaseTestCase;
 
@@ -23,6 +26,15 @@ import static org.mockito.Mockito.*;
  * Unit tests for {@link CATHandler_Wavecom_Stk}
  */
 public class CATHandler_Wavecom_StkTest extends BaseTestCase {
+	private static final String[] VALID_CONFIRMATION_PROMPTS = {
+		"+STGI: 1,\"Sure?\",1\nOK",
+		"+STGI: 1,\"Send money to 0704593656 Ksh50\",1\nOK",
+		"+STGI: 1,\"Send money to 0704593656\nKsh50\",1\nOK",
+	};
+	private static final String[] VALID_VALUE_PROMPTS = {
+		"+STGI: 0,0,4,4,0,\"Enter PIN\"",
+		"+STGI: 0,1,0,20,0,\"Enter phone no.\"",
+	};
 	private CATHandler_Wavecom_Stk h;
 	private CSerialDriver d;
 	private Logger l;
@@ -63,134 +75,75 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 		rootMenu.getRequest("M-PESA");
 	}
 	
-	public void testStkSubmenuMPESARequest() throws SMSLibDeviceException, IOException {
-		System.out.println("KIM TESTSUBMENU MPESA");
+	public void testStkConfirmationPrompt() throws SMSLibDeviceException, IOException {
 		// given
-		when(d.getResponse()).thenReturn("\rOK\r+STIN: 6\r",
-				"+STGI: 0,\"M-PESA\"\r+STGI: 1,7,\"Send money\",0\r+STGI: 2,7,\"Withdraw cash\",0\r" +
-						"+STGI: 3,7,\"Buy airtime\",0\r+STGI: 4,7,\"Pay Bill\",0\r+STGI: 5,7,\"Buy Goods\",0\r+STGI: 6,7,\"ATM Withdrawal\",0\r" +
-						"+STGI: 7,7,\"My account\",0\r\rOK");
+		when(d.getResponse()).thenReturn("OK\n+STIN: 1",
+				"+STGI: 1,\"Send money to 0704593656\nKsh50\",1\nOK",
+				"OK");
+		StkRequest pinEntrySubmitRequest = new StkValuePrompt().getRequest();
 		
 		// when
-		StkResponse rootMenuResponse = h.stkRequest(new StkMenuItem("M-PESA","0","129"));
+		// the confirmation prompt should be triggered by the previous action
+		StkResponse pinEntryResponse = h.stkRequest(pinEntrySubmitRequest, "1234");
 		
 		// then
-		InOrder inOrder = inOrder(d);
-		inOrder.verify(d).send("AT+STGR=0,1,129\r");
-		inOrder.verify(d).send("AT+STGI=6\r");
+		assertTrue(pinEntryResponse instanceof StkConfirmationPrompt);
 		
-		assertTrue(rootMenuResponse instanceof StkMenu);
-		StkMenu rootMenu = (StkMenu) rootMenuResponse;
-
-		assertEquals("Menu title was incorrect.", "M-PESA", rootMenu.getTitle());
-		rootMenu.getRequest("Send money");
-		rootMenu.getRequest("My account");
+		// when
+		// the confirmation is sent
+		StkResponse confirmationResponse = h.stkRequest(((StkConfirmationPrompt) pinEntryResponse).getRequest());
+		
+		// then
+		assertTrue(confirmationResponse instanceof StkConfirmationPromptResponse);
+		assertTrue(((StkConfirmationPromptResponse) confirmationResponse).isOk());
 	}
 	
-	public void testStkSubmenuSendMoneyRequest() throws SMSLibDeviceException, IOException {
-		System.out.println("KIM TESTSUBMENU Send Money");
-		// given
-		when(d.getResponse()).thenReturn("\rOK\r+STIN: 3\r", 
-				"+STGI: 0,1,0,20,0,\"Enter phone no.\"\rOK");
-		
-		// when
-		StkResponse rootMenuResponse = h.stkRequest(new StkMenuItem("Send Money","6","1"));
-		
-		// then
-		InOrder inOrder = inOrder(d);
-		inOrder.verify(d).send("AT+STGR=6,1,1\r");
-		inOrder.verify(d).send("AT+STGI=3\r");
-		
-		assertTrue(rootMenuResponse instanceof StkMenu);
-		StkMenu rootMenu = (StkMenu) rootMenuResponse;
-
-		assertEquals("Menu title was incorrect.", "Item", rootMenu.getTitle());
-		rootMenu.getRequest("Enter phone no.");
+	public void testStkValuePromptRegex_valid() {
+		for(String validPrompt : VALID_VALUE_PROMPTS) {
+			assertTrue(CATHandler_Wavecom_Stk.isValuePrompt(validPrompt));
+		}
 	}
 	
-	public void testStkSubmenuEnterPhoneNoRequest() throws SMSLibDeviceException, IOException {
-		System.out.println("KIM ITEM EnterPhoneNo");
-		String phoneNumber="0711640000";
-		// given
-		when(d.getResponse()).thenReturn("\rOK\r+STIN: 3\r",
-				"+STGI: 0,1,0,8,0,\"Enter amount\"\rOK");
-		
-		// when
-		StkResponse rootMenuResponse = h.stkRequest(new StkMenuItem("Enter phone no.","3",""),phoneNumber);
-		
-		// then
-		InOrder inOrder = inOrder(d);
-		inOrder.verify(d).send("AT+STGR=3,1\r> 0711640000<ctrl+z>\r");
-		inOrder.verify(d).send("AT+STGI=3\r");
-		
-		assertTrue(rootMenuResponse instanceof StkMenu);
-		StkMenu rootMenu = (StkMenu) rootMenuResponse;
-
-		assertEquals("Menu title was incorrect.", "Item", rootMenu.getTitle());
-		rootMenu.getRequest("Enter amount");
+	public void testStkValuePromptRegex_invalid() {
+		for(String invalidPrompt : VALID_CONFIRMATION_PROMPTS) {
+			assertFalse("Regex fails for value: " + invalidPrompt, CATHandler_Wavecom_Stk.isValuePrompt(invalidPrompt));
+		}
 	}
 	
-	public void testStkSubmenuEnterAmountRequest() throws SMSLibDeviceException, IOException {
-		System.out.println("KIM ITEM Enter amount");
-		String amount="1000";
-		// given
-		when(d.getResponse()).thenReturn("\rOK\r+STIN: 3\r",
-				"+STGI: 0,0,4,4,0,\"Enter PIN\"\rOK");
-		
-		// when
-		StkResponse rootMenuResponse = h.stkRequest(new StkMenuItem("Enter amount","3",""),amount);
-		
-		// then
-		InOrder inOrder = inOrder(d);
-		inOrder.verify(d).send("AT+STGR=3,1\r> 1000<ctrl+z>\r");
-		inOrder.verify(d).send("AT+STGI=3\r");
-		
-		assertTrue(rootMenuResponse instanceof StkMenu);
-		StkMenu rootMenu = (StkMenu) rootMenuResponse;
-
-		assertEquals("Menu title was incorrect.", "Item", rootMenu.getTitle());
-		rootMenu.getRequest("Enter PIN");
-	}
-
-	public void testStkSubmenuEnterPINRequest() throws SMSLibDeviceException, IOException {
-		System.out.println("KIM ITEM Enter PIN");
-		String amount="4444";
-		// given
-		when(d.getResponse()).thenReturn("\rOK\r+STIN: 1\r",
-				"+STGI: 0,1,\"Send money to 0711640000 Ksh1000\",1\rOK");
-		
-		// when
-		StkResponse rootMenuResponse = h.stkRequest(new StkMenuItem("Enter PIN","3",""),amount);
-		
-		// then
-		InOrder inOrder = inOrder(d);
-		inOrder.verify(d).send("AT+STGR=3,1\r> 4444<ctrl+z>\r");
-		inOrder.verify(d).send("AT+STGI=1\r");
-		
-		assertTrue(rootMenuResponse instanceof StkMenu);
-		StkMenu rootMenu = (StkMenu) rootMenuResponse;
-
-		assertEquals("Menu title was incorrect.", "Item", rootMenu.getTitle());
-		rootMenu.getRequest("Send money to 0711640000 Ksh1000");
+	public void testStkConfirmationPromptRegex_valid() {
+		for(String validPrompt : VALID_CONFIRMATION_PROMPTS) {
+			assertTrue("Regex fails for value: " + validPrompt, CATHandler_Wavecom_Stk.isConfirmationPrompt(validPrompt));
+		}
 	}
 	
-	public void testStkSubmenuConfirmRequest() throws SMSLibDeviceException, IOException {
-		System.out.println("KIM ITEM Confirm");
-
+	public void testStkConfirmationPromptRegex_invalid() {
+		for(String invalidPrompt : VALID_VALUE_PROMPTS) {
+			assertFalse("Regex fails for value: " + invalidPrompt, CATHandler_Wavecom_Stk.isConfirmationPrompt(invalidPrompt));
+		}
+	}
+	
+	public void testStkValuePrompt() throws SMSLibDeviceException, IOException {
 		// given
-		when(d.getResponse()).thenReturn("\rOK\r+STIN: 9\r+STGI: \"Sending...\"\r");
+		when(d.getResponse()).thenReturn("OK\n+STIN: 3",
+				"+STGI: 0,1,0,20,0,\"Enter phone no.\"",
+				">");
+		StkMenuItem enterPhoneNumber = new StkMenuItem("Enter phone no.", "6", "2");
 		
-		// when
-		StkResponse rootMenuResponse = h.stkRequest(new StkMenuItem("Send money to 0711640000 Ksh1000","1",""));
+		// when we trigger a relevant menu item
+		StkResponse menuItemResponse = h.stkRequest(enterPhoneNumber.getRequest());
 		
-		// then
-		verify(d).send("AT+STGR=1,1\r");
+		// then we are given a prompt for a value
+		assertTrue("Unexpected response class: " + menuItemResponse.getClass(), menuItemResponse instanceof StkValuePrompt);
 		
-		assertTrue(rootMenuResponse instanceof StkMenu);
-		StkMenu rootMenu = (StkMenu) rootMenuResponse;
-
-		assertEquals("Menu title was incorrect.", "Sending...", rootMenu.getTitle());
+		// when we submit the value
+		StkResponse phoneNumberSubmitResponse = h.stkRequest(((StkValuePrompt) menuItemResponse).getRequest(), "+12345678");
 		
+		// we are given a success message
+		assertTrue(phoneNumberSubmitResponse instanceof StkResponse);
+	}
+	
+	public void testStkSubmenuRequest() {
+		fail();
 	}
 	
 	public void testStkErrorRequest() throws SMSLibDeviceException, IOException {

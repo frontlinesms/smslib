@@ -11,10 +11,6 @@ public class StkMenuItem implements StkRequest {
 		this.menuId = menuId;
 		this.menuItemId = menuItemId;
 	}
-	
-	public StkMenuItem() {
-		// TODO Auto-generated constructor stub
-	}
 
 	public String getText() {
 		return text;
@@ -29,10 +25,6 @@ public class StkMenuItem implements StkRequest {
 	}
 
 	public StkRequest getRequest() {
-		return this;
-	}
-	
-	public StkRequest getRequest(String string) {
 		return this;
 	}
 }
