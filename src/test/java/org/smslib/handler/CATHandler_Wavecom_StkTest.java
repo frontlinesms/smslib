@@ -4,12 +4,14 @@ import java.io.IOException;
 
 import org.apache.log4j.Logger;
 import org.mockito.InOrder;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 import org.smslib.CSerialDriver;
 import org.smslib.CService;
 import org.smslib.SMSLibDeviceException;
+import org.smslib.handler.ATHandler.SynchronizedWorkflow;
 import org.smslib.stk.StkMenu;
 import org.smslib.stk.StkMenuItem;
-import org.smslib.stk.StkMenuItemNotFoundException;
 import org.smslib.stk.StkRequest;
 import org.smslib.stk.StkResponse;
 
@@ -32,6 +34,13 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 		d = mock(CSerialDriver.class);
 		l = mock(Logger.class);
 		s = mock(CService.class);
+		// Make sure that synchronized jobs run on the CService actually get executed - 
+		// otherwise the mock will just return null!
+		when(s.doSynchronized(any(SynchronizedWorkflow.class))).thenAnswer(new Answer() {
+			public Object answer(InvocationOnMock invocation) throws Throwable {
+				return ((SynchronizedWorkflow<?>) invocation.getArguments()[0]).run();
+			}
+		});
 		h = new CATHandler_Wavecom_Stk(d, l, s);
 	}
 	
