@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class StkMenu extends StkResponse {
+public class StkMenu implements StkResponse {
 	private final String title;
 	private final List<StkMenuItem> menuItems;
 
@@ -35,17 +35,7 @@ public class StkMenu extends StkResponse {
 		throw new StkMenuItemNotFoundException();
 	}
 	
-	public StkMenuItem getMenuItem(String menuItemText){
-		if (!this.menuItems.isEmpty()){
-			int i=0;
-			while(i<this.menuItems.size() && !this.menuItems.get(i).getText().contains(menuItemText)){
-				i++;
-			}
-			return this.menuItems.get(i);
-		}
-		return StkMenuItem.ERROR;
+	public int getMenuItemCount() {
+		return this.menuItems.size();
 	}
-	public List<StkMenuItem> getMenuItems(){
-	  return this.menuItems;
-	 }
 }

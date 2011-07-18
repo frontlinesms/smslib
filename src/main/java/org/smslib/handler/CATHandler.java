@@ -39,7 +39,7 @@ public class CATHandler implements ATHandler {
 	 * FIXME remove this and disable it
 	 */
 	//private static final boolean TRACE = false;
-	private static final boolean TRACE = true;
+	private static final boolean TRACE = false;
 	/** The value returned by {@link #sendMessage(int, String, String, String)} instead of a valid
 	 * SMSC reference number when sending a message failed. */
 	protected static final int SMSC_REF_NUMBER_SEND_FAILED = -1;
@@ -372,7 +372,6 @@ public class CATHandler implements ATHandler {
 	 * @throws IOException if access to {@link ATHandler#serialDriver} throws an {@link IOException}
 	 */
 	public String serialSendReceive(String command) throws IOException {
-		System.out.println(">>>>>>>>>>>>>>>>>>>>==="+command);
 		if(TRACE) log.info("ISSUING COMMAND: " + command);
 		if(TRACE) System.out.println("[" + Thread.currentThread().getName() + "] ISSUING COMMAND: " + command);
 		Matcher matcher = Pattern.compile("AT").matcher(command);

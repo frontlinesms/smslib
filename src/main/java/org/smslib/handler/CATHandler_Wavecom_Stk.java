@@ -35,7 +35,6 @@ import org.smslib.stk.StkMenu;
 import org.smslib.stk.StkMenuItem;
 import org.smslib.stk.StkRequest;
 import org.smslib.stk.StkResponse;
-import org.smslib.stk.StkInputRequiremnent;
 
 public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	public String regexNumberComma = "([\\d])+(,)+";
@@ -91,7 +90,6 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 				} else {
 					return true;
 				}
-				//return false;
 			}
 		}
 		return true;
@@ -137,7 +135,7 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 				String variable = variables.length==1? variables[0] : "";
 				
 				// have to read all as pertinent information is supplied AFTER the "OK"
-				String stgrResponse = serialSendReceive("AT+STGR="+ request.getMenuId()+",1"+request.getMenuItemId());
+				String stgrResponse = serialSendReceive("AT+STGR="+ request.getMenuId()+",1,1");
 				// TODO wait a bit...
 				if (notOk(stgrResponse)) {
 					return StkResponse.ERROR;
@@ -174,7 +172,7 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 					}
 				}
 			} else {
-				String initResponse = serialSendReceive("AT+STGR="+ request.getMenuId()+",1");
+				String initResponse = serialSendReceive("AT+STGR="+ request.getMenuId()+",1,1");
 				if (notOk(initResponse)) {
 					return StkResponse.ERROR;
 				} else {
@@ -234,6 +232,7 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 		String menuItemId = "";
 
 		Matcher matcher = Pattern.compile("\\+STGI: ((([\\d])+,)(([\\d])+,)+)+\\\"([\\w](.)*)+\\\"").matcher(serialSendReceive);
+
 		while (matcher.find() ){
 			uncleanTitle = matcher.group();
 			// retrieve menuItemId
@@ -245,6 +244,16 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 			uncleanTitle = uncleanTitle.replace("+STGI: ", "");
 			uncleanTitle = uncleanTitle.replace("\"", "");
 			uncleanTitle = uncleanTitle.replaceAll(regexNumberComma, "");
+
+			System.out.println("parseMenuItems cleanItemMenu:"+ uncleanTitle+"||menuId:"+menuId+"||MenuItemId:"+menuItemId);
+			items.add(new StkMenuItem(uncleanTitle,menuId,menuItemId));
+		}
+		if(uncleanTitle.trim().length()==0){
+			uncleanTitle = serialSendReceive;
+			uncleanTitle = uncleanTitle.replace("+STGI: ", "");
+			uncleanTitle = uncleanTitle.replace("\"", "");
+			menuId = "0";
+			menuItemId = "0";
 
 			System.out.println("parseMenuItems cleanItemMenu:"+ uncleanTitle+"||menuId:"+menuId+"||MenuItemId:"+menuItemId);
 			items.add(new StkMenuItem(uncleanTitle,menuId,menuItemId));

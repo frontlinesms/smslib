@@ -1,7 +1,6 @@
 package org.smslib.stk;
 
-public class StkMenuItem extends StkRequest {
-	public static final StkMenuItem ERROR = new StkMenuItem();
+public class StkMenuItem implements StkRequest {
 	private String text;
 	private String menuId; //MenuId of the menu where the item belongs to
 	private String menuItemId; //Id of the item itself

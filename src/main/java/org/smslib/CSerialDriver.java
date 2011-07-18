@@ -37,9 +37,9 @@ public class CSerialDriver implements SerialPortEventListener {
 	private static final boolean TRACE_IO = false;
 	private static final boolean DEBUG = false;
 	
-	private static final int DELAY = 1000;
+	private static final int DELAY = 50;
 
-	private static final int DELAY_AFTER_WRITE = 1000;
+	private static final int DELAY_AFTER_WRITE = 50;
 
 	private static final int RECV_TIMEOUT = 30 * 1000;
 
@@ -230,7 +230,6 @@ public class CSerialDriver implements SerialPortEventListener {
 			outStream.write((byte) s.charAt(i));
 		}
 		outStream.flush();
-		
 		sleep_ignoreInterrupts(DELAY_AFTER_WRITE);
 	}
 	
@@ -294,52 +293,52 @@ public class CSerialDriver implements SerialPortEventListener {
 							break;
 						}
 						buffer.append((char) c);
-						if ((c == '\r') || (c == '\n')) break;
+						
+						if ((c == '\r') || (c == '\n') || (c == '>')) break;
 					}
 					String response = buffer.toString();
 
 					if(response.length() == 0
-							//|| response.matches("\\s*[\\p{ASCII}]*\\s+OK\\s")
-							
-							//|| response.matches("\\s*[\\p{ASCII}]*\\s+OK\\s")
-							// if (response.matches("\\s*[\\p{ASCII}]*\\s+READY\\s+OK\\s")
 							|| response.matches("\\s*[\\p{ASCII}]*\\s+READY\\s+")
 							|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR\\s")
 							|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR: \\d+\\s")
-							|| response.matches("\\s*[\\p{ASCII}]*\\s+SIM PIN\\s")) break;
-					else if(response.matches("\\s*[+]((CMTI)|(CDSI))[:][^\r\n]*[\r\n]")) {
+							|| response.matches("\\s*[\\p{ASCII}]*\\s+SIM PIN\\s")
+							|| response.matches("\\s*\\>\\s*")) {
+						// When the '>' character starts a line, it shows that the device
+						// is waiting for input.  We should return quickly from this.
+						break;
+					} else if(response.matches("\\s*[+]((CMTI)|(CDSI))[:][^\r\n]*[\r\n]")) {
 						if (log != null) log.debug("ME: " + formatLog(buffer));
 						buffer.delete(0, buffer.length());
 						if (newMsgMonitor != null) newMsgMonitor.raise(CNewMsgMonitor.CMTI);
 						continue;
 					}
 					Matcher matcher = Pattern.compile("AT[+]STGR[=|,|\\d]").matcher(this.lastAtCommand);
-					if(matcher.find()){
+					if(matcher.find()) {
 						matcher = Pattern.compile("\\s*[\\p{ASCII}]*\\s*+STIN: \\d+\\s*").matcher(response);
 						
 						if (matcher.find()
-						|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR\\s")
-						|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR: \\d+\\s")) break;
-					}else{
+								|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR\\s")
+								|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR: \\d+\\s")) break;
+					} else {
 						matcher = Pattern.compile("AT").matcher(this.lastAtCommand);
-						if(matcher.find()){
-							if(response.matches("\\s*[\\p{ASCII}]*\\s+OK\\s")){
+						if(matcher.find()) {
+							if(response.matches("\\s*[\\p{ASCII}]*\\s+OK\\s")) {
 								break;
 							}
-						}else{
+						} else {
 							matcher = Pattern.compile("\\s*[\\p{ASCII}]*\\s*+STIN: \\d+\\s*").matcher(response);
 							
 							if (matcher.find()
-							|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR\\s")
-							|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR: \\d+\\s")) break;
+									|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR\\s")
+									|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR: \\d+\\s")) break;
 						}
 					}
 				}
 				retry = MAX_RETRIES;
 			} catch (IOException e) {
 				e.printStackTrace();
-				if (retry < MAX_RETRIES)
-				{
+				if (retry < MAX_RETRIES) {
 					try { Thread.sleep(DELAY); } catch(InterruptedException ex) {}
 					++retry;
 				} else throw e;

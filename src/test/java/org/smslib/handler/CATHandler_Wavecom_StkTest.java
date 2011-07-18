@@ -36,12 +36,12 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 	}
 	
 	public void testStkRootMenuRequest() throws SMSLibDeviceException, IOException {
-		System.out.println("KIM TESTROOTMENU");
 		// given
 		when(d.getResponse()).thenReturn("\r+STGI: \"Safaricom\"\r+STGI: 1,2,\"Safaricom\",0,0\r+STGI: 129,2,\"M-PESA\",0,21\r\rOK");
 		
 		// when
 		StkResponse rootMenuResponse = h.stkRequest(StkRequest.GET_ROOT_MENU);
+		// TODO wait for synchronised job to complete (how?)
 		
 		// then
 		verify(d).send("AT+STGI=0\r");
