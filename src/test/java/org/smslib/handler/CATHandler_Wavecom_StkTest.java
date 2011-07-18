@@ -133,12 +133,16 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 		StkResponse menuItemResponse = h.stkRequest(enterPhoneNumber.getRequest());
 		
 		// then we are given a prompt for a value
+		// FIXME these should be verified inorder
+		verify(d).send("AT+STGR=6,1,2\r");
+		verify(d).send("AT+STGI=3\r");
 		assertTrue("Unexpected response class: " + menuItemResponse.getClass(), menuItemResponse instanceof StkValuePrompt);
 		
 		// when we submit the value
 		StkResponse phoneNumberSubmitResponse = h.stkRequest(((StkValuePrompt) menuItemResponse).getRequest(), "+12345678");
 		
 		// we are given a success message
+		verify(d).send("+12345678" + ((char) 0x1A) + '\r');
 		assertTrue(phoneNumberSubmitResponse instanceof StkResponse);
 	}
 	

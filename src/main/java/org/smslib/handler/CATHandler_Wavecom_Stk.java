@@ -41,7 +41,7 @@ import org.smslib.stk.StkValuePrompt;
 
 public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	private static final String VALUE_PROMPT_REGEX = "\\+STGI: \\d+,\\d+,\\d+,\\d+,\\d+,\".*\"";
-	private static final String CONFIRMATION_PROMPT_REGEX = "\\+STGI: \\d+,\".*\",\\d+\\s+OK\\s*";
+	private static final Pattern CONFIRMATION_PROMPT_REGEX = Pattern.compile("\\+STGI: \\d+,\".*\",\\d+\\s+OK\\s*", Pattern.DOTALL);
 	public String regexNumberComma = "([\\d])+(,)+";
 	public String regexNumber = "([\\d])+";
 	
@@ -147,7 +147,7 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	}
 	
 	static boolean isConfirmationPrompt(String serialResponse) {
-		return Pattern.compile(CONFIRMATION_PROMPT_REGEX, Pattern.DOTALL).matcher(serialResponse).matches();
+		return CONFIRMATION_PROMPT_REGEX.matcher(serialResponse).matches();
 	}
 
 	static boolean isValuePrompt(String serialResponse) {
@@ -156,8 +156,16 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 
 	private StkResponse doMenuRequest(StkMenuItem request) throws IOException {
 		String initialResponse = serialSendReceive("AT+STGR=" + request.getMenuId() + ",1," + request.getMenuItemId());
-		String secondaryResponse = serialSendReceive("AT+STGI=" /* FIXME extract this number from previous response */);
+		String secondaryResponse = serialSendReceive("AT+STGI=" + extractNumber(initialResponse, 1));
 		return parseStkResponse(secondaryResponse, request.getMenuId());
+	}
+
+	/** Extract the nth set of digits from the supplied string */
+	private static String extractNumber(String s, int n) {
+		Pattern p = Pattern.compile("\\d+");
+		Matcher m = p.matcher(s);
+		while(n-- > 0) m.find();
+		return m.group();
 	}
 
 	private StkResponse doMenuRequest(StkMenuItem request, String[] variables) throws IOException {
