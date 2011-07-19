@@ -1,9 +1,13 @@
 package org.smslib.handler;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
 
 import org.apache.log4j.Logger;
 import org.mockito.InOrder;
+import org.mockito.internal.verification.NoMoreInteractions;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.smslib.CSerialDriver;
@@ -61,14 +65,16 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 	
 	public void testStkRootMenuRequest() throws SMSLibDeviceException, IOException {
 		// given
-		when(d.getResponse()).thenReturn("\r+STGI: \"Safaricom\"\r+STGI: 1,2,\"Safaricom\",0,0\r+STGI: 129,2,\"M-PESA\",0,21\r\rOK");
+		modemShouldRespond(
+				"+STIN: 99",
+				"\r+STGI: \"Safaricom\"\r+STGI: 1,2,\"Safaricom\",0,0\r+STGI: 129,2,\"M-PESA\",0,21\r\rOK");
 		
 		// when
 		StkResponse rootMenuResponse = h.stkRequest(StkRequest.GET_ROOT_MENU);
-		// TODO wait for synchronised job to complete (how?)
 		
 		// then
-		verify(d).send("AT+STGI=0\r");
+		verifySentToModem("AT+STGR=99",
+				"AT+STGI=0");
 		
 		assertTrue(rootMenuResponse instanceof StkMenu);
 		StkMenu rootMenu = (StkMenu) rootMenuResponse;
@@ -80,7 +86,7 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 	
 	public void testStkConfirmationPrompt() throws SMSLibDeviceException, IOException {
 		// given
-		when(d.getResponse()).thenReturn(">",
+		modemShouldRespond(">",
 				"OK\n+STIN: 1",
 				"+STGI: 1,\"Send money to 0704593656\nKsh50\",1\nOK",
 				"OK\r+STIN: 9",
@@ -93,19 +99,17 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 		StkResponse pinEntryResponse = h.stkRequest(pinEntrySubmitRequest, "1234");
 		
 		// then
-		// FIXME these should be inorder
-		verify(d).send("AT+STGR=3,1,1\r");
-		verify(d).send("1234" + (char)0x1a + '\r');
-		verify(d).send("AT+STGI=1\r"); // TODO should refactor this into verifySent(String...) and include \r characters within the method rather than appending to every string
+		verifySentToModem("AT+STGR=3,1,1",
+				"1234" + (char)0x1a,
+				"AT+STGI=1");
 		assertTrue(pinEntryResponse instanceof StkConfirmationPrompt);
 		
 		// when the confirmation is sent
 		StkResponse confirmationResponse = h.stkRequest(((StkConfirmationPrompt) pinEntryResponse).getRequest());
 		
 		// then
-		// FIXME these shoudl be inorder
-		verify(d).send("AT+STGR=1,1,1\r");
-		verify(d).send("AT+STGI=9\r");
+		verifySentToModem("AT+STGR=1,1,1",
+				"AT+STGI=9");
 		assertTrue(confirmationResponse instanceof StkConfirmationPromptResponse);
 		assertTrue(((StkConfirmationPromptResponse) confirmationResponse).isOk());
 	}
@@ -136,49 +140,52 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 	
 	public void testStkValuePrompt() throws SMSLibDeviceException, IOException {
 		// given
-		when(d.getResponse()).thenReturn("OK\n+STIN: 3",
-				"+STGI: 0,1,0,20,0,\"Enter phone no.\"",
-				">");
+		modemShouldRespond("OK\n+STIN: 3",
+				"+STGI: 0,1,0,20,0,\"Enter phone no.\"\nOK",
+				">",
+				"+STIN: 3",
+				"+STGI: 0,1,0,8,0,\"Enter amount\"\nOK"/*final response is anything but an error*/);
 		StkMenuItem enterPhoneNumber = new StkMenuItem("Enter phone no.", "6", "2");
 		
 		// when we trigger a relevant menu item
 		StkResponse menuItemResponse = h.stkRequest(enterPhoneNumber.getRequest());
 		
 		// then we are given a prompt for a value
-		// FIXME these should be verified inorder
-		verify(d).send("AT+STGR=6,1,2\r");
-		verify(d).send("AT+STGI=3\r");
+		verifySentToModem("AT+STGR=6,1,2",
+				"AT+STGI=3");
 		assertTrue("Unexpected response class: " + menuItemResponse.getClass(), menuItemResponse instanceof StkValuePrompt);
 		
 		// when we submit the value
 		StkResponse phoneNumberSubmitResponse = h.stkRequest(((StkValuePrompt) menuItemResponse).getRequest(), "+12345678");
 		
 		// we are given a success message
-		verify(d).send("+12345678" + ((char) 0x1A) + '\r');
+		verifySentToModem("AT+STGR=3,1,1",
+				"+12345678" + ((char) 0x1A),
+				"AT+STGI=3");
 		assertTrue(phoneNumberSubmitResponse instanceof StkResponse);
 	}
 	
 	public void testStkSubmenuRequest() throws SMSLibDeviceException, IOException {
 		// given
-		when(d.getResponse()).thenReturn("OK\n+STIN: 6",
-				"+STGI: 0,0,0,\"M-PESA\"\n+STGI: 1,7,\"Send money\",0\n+STGI: 2,7,\"Withdraw cash\",0\n+STGI: 3,7,\"Buy airtime\",0\n+STGI: 4,7,\"Pay Bill\",0\n+STGI: 5,7,\"Buy Goods\",0\n+STGI: 6,7,\"ATM Withdrawal\",0\n+STGI: 7,7,\"My account\",0\nOK");
+		modemShouldRespond("OK\n+STIN: 6",
+				"+STGI: 0,0,0,\"M-PESA\"\n+STGI: 1,7,\"Send money\",0\n+STGI: 2,7,\"Withdraw cash\",0\n+STGI: 3,7,\"Buy airtime\",0\n+STGI: 4,7,\"Pay Bill\",0\n+STGI: 5,7,\"Buy Goods\",0\n+STGI: 6,7,\"ATM Withdrawal\",0\n+STGI: 7,7,\"My account\",0\nOK",
+				"+STIN: 6");
 		StkRequest submenuRequest = new StkMenuItem("M-PESA", "0", "1");
 		
 		// when we request a submenu
 		StkResponse submenuResponse = h.stkRequest(submenuRequest);
 		
 		// then we are given the items in that menu
-		verify(d).send("AT+STGR=0,1,1\r");
-		verify(d).send("AT+STGI=6\r");
+		verifySentToModem("AT+STGR=0,1,1",
+				"AT+STGI=6");
 		assertTrue(submenuResponse instanceof StkMenu);
 		
 		// when we request an item from the submenu
 		h.stkRequest(((StkMenu) submenuResponse).getRequest("Send money"));
 		
 		// then correct menu item is corrected
-		// FIXME following verify's should be inorder
-		verify(d).send("AT+STGR=6,1,1\r");
-		verify(d).send("AT+STGI=6\r");
+		verifySentToModem("AT+STGR=6,1,1",
+				"AT+STGI=6");
 	}
 	
 	public void testStkErrorRequest() throws SMSLibDeviceException, IOException {
@@ -194,39 +201,51 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 		}
 		
 		// then the handler should have tried to start the session
-		verify(d).send("AT+STGR=99\r");
+		verifySentToModem("AT+STGR=99");
 	}
 	
 	public void testInitStkWithoutPin() throws Exception {
 		// when
-		when(d.getResponse()).thenReturn("OK", "OK", "+CPIN: READY");
+		modemShouldRespond("OK", "OK", "+CPIN: READY");
 		
 		// when
 		h.stkInit();
 		
 		// then
-		InOrder inOrder = inOrder(d);
-		inOrder.verify(d).send("AT+CMEE=1\r");
-		inOrder.verify(d).send("AT+STSF=1\r");
-		inOrder.verify(d).send("AT+CPIN?\r");
-		inOrder.verify(d, never()).send(anyString());
+		verifySentToModem("AT+CMEE=1",
+				"AT+STSF=1",
+				"AT+CPIN?");
 	}
 	
 	public void testInitStkWithPin() throws Exception {
 		// when
-		when(d.getResponse()).thenReturn("OK", "OK", "+CPIN: SIM PIN", "OK");
+		modemShouldRespond("OK", "OK", "+CPIN: SIM PIN", "OK");
 		when(s.getSimPin()).thenReturn("1234");
 		
 		// when
 		h.stkInit();
 		
 		// then
+		verifySentToModem("AT+CMEE=1",
+				"AT+STSF=1",
+				"AT+CPIN?",
+				"AT+CPIN=1234");
+	}
+
+	/** Verifies that a list of serial commands were sent to the modem in a specific order
+	 * and that no other commands were sent. */
+	private void verifySentToModem(String... commands) throws IOException {
 		InOrder inOrder = inOrder(d);
-		inOrder.verify(d).send("AT+CMEE=1\r");
-		inOrder.verify(d).send("AT+STSF=1\r");
-		inOrder.verify(d).send("AT+CPIN?\r");
-		inOrder.verify(d).send("AT+CPIN=1234\r");
+		for(String command: commands) {
+			inOrder.verify(d).send(command + '\r');
+		}
 		inOrder.verify(d, never()).send(anyString());
+	}
+	
+	private void modemShouldRespond(String response1, String... responseArray) throws IOException {
+		List<String> responses = new LinkedList<String>(Arrays.asList(responseArray));
+		responses.add("ERROR");
+		when(d.getResponse()).thenReturn(response1, responses.toArray(new String[0]));
 	}
 
 	// TODO test cases where PIN is supplied incorrectly?
