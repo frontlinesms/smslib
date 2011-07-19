@@ -88,8 +88,7 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 				"OK\n+STIN: 1",
 				"+STGI: 1,\"Send money to 0704593656\nKsh50\",1\nOK",
 				"OK\r+STIN: 9",
-				"\r+STGI: \"Sending...\"\r\n\rOK\r",
-				"ERROR"); // TODO cleanup: mockResponses(String...)
+				"\r+STGI: \"Sending...\"\r\n\rOK\r");
 		
 		StkRequest pinEntrySubmitRequest = new StkValuePrompt().getRequest();
 		
