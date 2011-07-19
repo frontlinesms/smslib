@@ -37,7 +37,7 @@ public class CATHandler implements ATHandler {
 	 * FIXME remove this and disable it
 	 */
 	//private static final boolean TRACE = false;
-	private static final boolean TRACE = false;
+	private static final boolean TRACE = true;
 	/** The value returned by {@link #sendMessage(int, String, String, String)} instead of a valid
 	 * SMSC reference number when sending a message failed. */
 	protected static final int SMSC_REF_NUMBER_SEND_FAILED = -1;

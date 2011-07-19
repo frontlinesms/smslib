@@ -40,8 +40,8 @@ import org.smslib.stk.StkResponse;
 import org.smslib.stk.StkValuePrompt;
 
 public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
-	private static final String VALUE_PROMPT_REGEX = "\\+STGI: \\d+,\\d+,\\d+,\\d+,\\d+,\".*\"";
-	private static final Pattern CONFIRMATION_PROMPT_REGEX = Pattern.compile("\\+STGI: \\d+,\".*\",\\d+\\s+OK\\s*", Pattern.DOTALL);
+	private static final String VALUE_PROMPT_REGEX = "\\s*\\+STGI: (\\d+,){5}\".*\"(\\s+OK\\s*)?";
+	private static final Pattern CONFIRMATION_PROMPT_REGEX = Pattern.compile("\\s*\\+STGI: \\d+,\".*\",\\d+\\s+OK\\s*", Pattern.DOTALL);
 	public String regexNumberComma = "([\\d])+(,)+";
 	public String regexNumber = "([\\d])+";
 	
@@ -118,17 +118,23 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 				} else if(request.equals(StkValuePrompt.REQUEST)) {
 					return handleValuePromptRequest(request, variables);
 				} else /*if(request instanceof StkConfirmationPrompt)*/ {
-					// TODO build this request properly, and parse the text response
-					String response = serialSendReceive("AT+STGR=" /* TODO add appropriate confirmation params */);
-					if(response.contains("OK")) {
-						return StkConfirmationPromptResponse.OK;
-					} else return StkConfirmationPromptResponse.createError(response);
+					// 1[confirm],1[dunno, but always there],1[optional it seems]
+					String stgrResponse = serialSendReceive("AT+STGR=1,1,1");
+					if(stgrResponse.contains("OK")) {
+						String stgiResponse = serialSendReceive("AT+STGI=" + extractNumber(stgrResponse, 1));
+						if(stgiResponse.contains("OK")) {
+							return StkConfirmationPromptResponse.OK;
+						}
+					}
+					return StkConfirmationPromptResponse.createError(stgrResponse);
 				} /*else return null;	*/
 			}
 		});
  	}
 
 	private StkResponse handleValuePromptRequest(StkRequest request, String... variables) throws IOException {
+		// 3[mode=input],1[not sure],1[this seems to be optional]
+		serialSendReceive("AT+STGR=3,1,1");
 		// Suffix variable with "EOF"/"End of file"/"Ctrl-z"
 		String submitResponse = serialSendReceive(variables[0] + (char)0x1A);
 		String menuId = getMenuId(submitResponse);

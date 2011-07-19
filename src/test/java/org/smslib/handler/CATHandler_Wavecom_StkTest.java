@@ -30,10 +30,13 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 		"+STGI: 1,\"Sure?\",1\nOK",
 		"+STGI: 1,\"Send money to 0704593656 Ksh50\",1\nOK",
 		"+STGI: 1,\"Send money to 0704593656\nKsh50\",1\nOK",
+		"\r\n+STGI: 1,\"Send money to +254725452345\nKsh40000\",1\r\n\rOK\r"
 	};
 	private static final String[] VALID_VALUE_PROMPTS = {
 		"+STGI: 0,0,4,4,0,\"Enter PIN\"",
 		"+STGI: 0,1,0,20,0,\"Enter phone no.\"",
+		"+STGI: 0,1,0,20,0,\"Enter phone no.\"\rOK",
+		"\r\n+STGI: 0,1,0,20,0,\"Enter phone no.\"\r\n\r\nOK\r",
 	};
 	private CATHandler_Wavecom_Stk h;
 	private CSerialDriver d;
@@ -77,24 +80,32 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 	
 	public void testStkConfirmationPrompt() throws SMSLibDeviceException, IOException {
 		// given
-		when(d.getResponse()).thenReturn("OK\n+STIN: 1",
+		when(d.getResponse()).thenReturn(">",
+				"OK\n+STIN: 1",
 				"+STGI: 1,\"Send money to 0704593656\nKsh50\",1\nOK",
-				"OK");
+				"OK\r+STIN: 9",
+				"\r+STGI: \"Sending...\"\r\n\rOK\r",
+				"ERROR"); // TODO cleanup: mockResponses(String...)
 		
 		StkRequest pinEntrySubmitRequest = new StkValuePrompt().getRequest();
 		
-		// when
-		// the confirmation prompt should be triggered by the previous action
+		// when the confirmation prompt should be triggered by the previous action
 		StkResponse pinEntryResponse = h.stkRequest(pinEntrySubmitRequest, "1234");
 		
 		// then
+		// FIXME these should be inorder
+		verify(d).send("AT+STGR=3,1,1\r");
+		verify(d).send("1234" + (char)0x1a + '\r');
+		verify(d).send("AT+STGI=1\r"); // TODO should refactor this into verifySent(String...) and include \r characters within the method rather than appending to every string
 		assertTrue(pinEntryResponse instanceof StkConfirmationPrompt);
 		
-		// when
-		// the confirmation is sent
+		// when the confirmation is sent
 		StkResponse confirmationResponse = h.stkRequest(((StkConfirmationPrompt) pinEntryResponse).getRequest());
 		
 		// then
+		// FIXME these shoudl be inorder
+		verify(d).send("AT+STGR=1,1,1\r");
+		verify(d).send("AT+STGI=9\r");
 		assertTrue(confirmationResponse instanceof StkConfirmationPromptResponse);
 		assertTrue(((StkConfirmationPromptResponse) confirmationResponse).isOk());
 	}
