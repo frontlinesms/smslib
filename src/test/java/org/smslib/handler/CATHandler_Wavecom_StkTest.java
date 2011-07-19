@@ -7,7 +7,6 @@ import java.util.List;
 
 import org.apache.log4j.Logger;
 import org.mockito.InOrder;
-import org.mockito.internal.verification.NoMoreInteractions;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.smslib.CSerialDriver;
@@ -65,8 +64,7 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 	
 	public void testStkRootMenuRequest() throws SMSLibDeviceException, IOException {
 		// given
-		modemShouldRespond(
-				"+STIN: 99",
+		mockModemResponses("+STIN: 99",
 				"\r+STGI: \"Safaricom\"\r+STGI: 1,2,\"Safaricom\",0,0\r+STGI: 129,2,\"M-PESA\",0,21\r\rOK");
 		
 		// when
@@ -86,7 +84,7 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 	
 	public void testStkConfirmationPrompt() throws SMSLibDeviceException, IOException {
 		// given
-		modemShouldRespond(">",
+		mockModemResponses(">",
 				"OK\n+STIN: 1",
 				"+STGI: 1,\"Send money to 0704593656\nKsh50\",1\nOK",
 				"OK\r+STIN: 9",
@@ -140,7 +138,7 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 	
 	public void testStkValuePrompt() throws SMSLibDeviceException, IOException {
 		// given
-		modemShouldRespond("OK\n+STIN: 3",
+		mockModemResponses("OK\n+STIN: 3",
 				"+STGI: 0,1,0,20,0,\"Enter phone no.\"\nOK",
 				">",
 				"+STIN: 3",
@@ -167,7 +165,7 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 	
 	public void testStkSubmenuRequest() throws SMSLibDeviceException, IOException {
 		// given
-		modemShouldRespond("OK\n+STIN: 6",
+		mockModemResponses("OK\n+STIN: 6",
 				"+STGI: 0,0,0,\"M-PESA\"\n+STGI: 1,7,\"Send money\",0\n+STGI: 2,7,\"Withdraw cash\",0\n+STGI: 3,7,\"Buy airtime\",0\n+STGI: 4,7,\"Pay Bill\",0\n+STGI: 5,7,\"Buy Goods\",0\n+STGI: 6,7,\"ATM Withdrawal\",0\n+STGI: 7,7,\"My account\",0\nOK",
 				"+STIN: 6");
 		StkRequest submenuRequest = new StkMenuItem("M-PESA", "0", "1");
@@ -206,7 +204,7 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 	
 	public void testInitStkWithoutPin() throws Exception {
 		// when
-		modemShouldRespond("OK", "OK", "+CPIN: READY");
+		mockModemResponses("OK", "OK", "+CPIN: READY");
 		
 		// when
 		h.stkInit();
@@ -219,7 +217,7 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 	
 	public void testInitStkWithPin() throws Exception {
 		// when
-		modemShouldRespond("OK", "OK", "+CPIN: SIM PIN", "OK");
+		mockModemResponses("OK", "OK", "+CPIN: SIM PIN", "OK");
 		when(s.getSimPin()).thenReturn("1234");
 		
 		// when
@@ -242,7 +240,7 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 		inOrder.verify(d, never()).send(anyString());
 	}
 	
-	private void modemShouldRespond(String response1, String... responseArray) throws IOException {
+	private void mockModemResponses(String response1, String... responseArray) throws IOException {
 		List<String> responses = new LinkedList<String>(Arrays.asList(responseArray));
 		responses.add("ERROR");
 		when(d.getResponse()).thenReturn(response1, responses.toArray(new String[0]));
