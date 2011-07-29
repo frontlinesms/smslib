@@ -125,23 +125,17 @@
 			<artifactId>serial</artifactId>
 			<version>1.0.0</version>
 		</dependency>
-		
-		<dependency>
-			<groupId>net.frontlinesms.core</groupId>
-			<artifactId>frontlinesms-test</artifactId>
-			<version>0.01.01</version>
-			<scope>test</scope>
-		</dependency>
+
 		<dependency>
 			<groupId>net.frontlinesms.test</groupId>
 			<artifactId>hayescommandset-test</artifactId>
 			<version>0.0.2-SNAPSHOT</version>
 		</dependency>
-		<dependency>
-			<groupId>org.mockito</groupId>
-			<artifactId>mockito-all</artifactId>
-			<version>1.8.2</version>
-			<scope>test</scope> 
-		</dependency>
+	    <dependency>
+			<groupId>net.frontlinesms.core</groupId>
+			<artifactId>frontlinesms-test</artifactId>
+			<version>0.01.02-SNAPSHOT</version>
+			<scope>test</scope>
+	    </dependency>
 	</dependencies>
 </project>

@@ -7,12 +7,9 @@ import java.util.List;
 
 import org.apache.log4j.Logger;
 import org.mockito.InOrder;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 import org.smslib.CSerialDriver;
 import org.smslib.CService;
 import org.smslib.SMSLibDeviceException;
-import org.smslib.handler.ATHandler.SynchronizedWorkflow;
 import org.smslib.stk.StkConfirmationPrompt;
 import org.smslib.stk.StkConfirmationPromptResponse;
 import org.smslib.stk.StkMenu;
@@ -22,6 +19,7 @@ import org.smslib.stk.StkResponse;
 import org.smslib.stk.StkValuePrompt;
 
 import net.frontlinesms.junit.BaseTestCase;
+import net.frontlinesms.test.smslib.SmsLibTestUtils;
 
 import static org.mockito.Mockito.*;
 
@@ -51,14 +49,7 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 		super.setUp();
 		d = mock(CSerialDriver.class);
 		l = mock(Logger.class);
-		s = mock(CService.class);
-		// Make sure that synchronized jobs run on the CService actually get executed - 
-		// otherwise the mock will just return null!
-		when(s.doSynchronized(any(SynchronizedWorkflow.class))).thenAnswer(new Answer() {
-			public Object answer(InvocationOnMock invocation) throws Throwable {
-				return ((SynchronizedWorkflow<?>) invocation.getArguments()[0]).run();
-			}
-		});
+		s = SmsLibTestUtils.mockCService();
 		h = new CATHandler_Wavecom_Stk(d, l, s);
 	}
 	

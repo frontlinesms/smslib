@@ -122,8 +122,17 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 					String stgrResponse = serialSendReceive("AT+STGR=1,1,1");
 					if(stgrResponse.contains("OK")) {
 						String stgiResponse = serialSendReceive("AT+STGI=" + extractNumber(stgrResponse, 1));
-						if(stgiResponse.contains("OK")) {
-							return StkConfirmationPromptResponse.OK;
+						if(stgiResponse.contains("OK")){
+							stgiResponse = serialSendReceive("AT+STGI=" + extractNumber(stgiResponse, 1));
+							if(stgiResponse.contains("OK")) {
+								if(stgiResponse.contains("Not sent")){
+									return StkConfirmationPromptResponse.createError(stgrResponse);
+								} else {
+									return StkConfirmationPromptResponse.OK;
+								}
+							}
+						} else {
+							return StkConfirmationPromptResponse.createError(stgrResponse);
 						}
 					}
 					return StkConfirmationPromptResponse.createError(stgrResponse);
@@ -209,8 +218,7 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 									if (notOk(stgiResponse)) {
 										return StkResponse.ERROR;
 									} else {
-										menuId = getMenuId(stgiResponse);
-										return parseMenu(stgiResponse, menuId);
+										menuId = getMenuId(stgiResponse);																
 									}
 								}
 							}
