@@ -167,4 +167,6 @@ public interface ATHandler {
 	void stkInit() throws SMSLibDeviceException, IOException;
 	
 	StkResponse stkRequest(StkRequest request, String... variables) throws SMSLibDeviceException, IOException;
+
+	void configureModem() throws SMSLibDeviceException, IOException;
 }

@@ -441,4 +441,8 @@ public class CATHandler implements ATHandler {
 	public StkResponse stkRequest(StkRequest request, String... variables) throws SMSLibDeviceException, IOException {
 		throw new NoStkSupportException();
 	}
+
+	public void configureModem() throws SMSLibDeviceException, IOException {
+		if(!supportsStk()) throw new IllegalStateException("Cannot configure modem.");
+	}
 }

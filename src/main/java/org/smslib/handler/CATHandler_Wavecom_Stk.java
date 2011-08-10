@@ -73,6 +73,25 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 			}
 		});
 	}
+	
+	@Override
+	public void configureModem() throws SMSLibDeviceException, IOException {
+		srv.doSynchronized(new SynchronizedWorkflow<Object>() {
+			public Object run() throws IOException {
+				String vlue = "5FFFFFFF7F";
+				String pinResponse = serialSendReceive("AT+CPIN?");
+				if(isWaitingForPin(pinResponse)) {
+					serialSendReceive("AT+CPIN="+srv.getSimPin());
+				}
+				serialSendReceive("AT+STSF=0");
+		 		serialSendReceive("AT+STSF=1");
+		 		serialSendReceive("AT+STSF=2,\""+vlue+"\",200,1");
+		 		serialSendReceive("AT+STSF=2,\""+vlue+"\",200,0");
+		 		serialSendReceive("AT+CFUN=1");
+				return null;
+			}
+		});
+	}
 
 	/** Starts a new STK session if required. */
 	public void stkStartNewSession() throws IOException, SMSLibDeviceException {
