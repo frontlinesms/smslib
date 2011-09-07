@@ -145,7 +145,8 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 							stgiResponse = serialSendReceive("AT+STGI=" + extractNumber(stgiResponse, 1));
 							if(stgiResponse.contains("OK")) {
 								if(stgiResponse.contains("Not sent")){
-									return StkConfirmationPromptResponse.createError(stgrResponse);
+									return StkConfirmationPromptResponse.ERROR;
+									//return StkConfirmationPromptResponse.createError(stgrResponse);
 								} else {
 									return StkConfirmationPromptResponse.OK;
 								}
@@ -201,75 +202,6 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 		Matcher m = p.matcher(s);
 		while(n-- > 0) m.find();
 		return m.group();
-	}
-
-	private StkResponse doMenuRequest(StkMenuItem request, String[] variables) throws IOException {
-		// test if Item or menuItem
-		if (request.getMenuItemId().equals("")) {
-			if (!request.getText().contains("Send money")) { // FIXME DEFINITELY SHOULD NOT BE SPECIAL HANDLING HERE FOR SEND MONEY
-				String variable = variables.length==1? variables[0] : "";
-				
-				// have to read all as pertinent information is supplied AFTER the "OK"
-				String stgrResponse = serialSendReceive("AT+STGR="+ request.getMenuId()+",1,"+request.getMenuItemId());
-				// TODO wait a bit...
-				if (notOk(stgrResponse)) {
-					return StkResponse.ERROR;
-				} else {
-					stgrResponse = serialSendReceive(variable);
-					if (notOk(stgrResponse)) {
-						return StkResponse.ERROR;
-					} else {
-						String menuId = getMenuId(stgrResponse);
-						String stgiResponse = serialSendReceive("AT+STGI="+menuId);
-						if (notOk(stgiResponse)){
-							return StkResponse.ERROR;
-						} else {
-							while(stgiResponse.contains("+STIN")) {
-								stgiResponse = serialSendReceive("AT+STGI="+menuId);
-							}
-							if(menuId.equals("1")){
-								String stgrRequest = serialSendReceive("AT+STGR=1,1,1");
-								if (notOk(stgrRequest)) {
-									return StkResponse.ERROR;
-								} else {
-									menuId = getMenuId(stgrRequest);
-									stgiResponse = serialSendReceive("AT+STGI="+menuId);
-									if (notOk(stgiResponse)) {
-										return StkResponse.ERROR;
-									} else {
-										menuId = getMenuId(stgiResponse);																
-									}
-								}
-							}
-							return parseMenu(stgiResponse, menuId);
-						}
-					}
-				}
-			} else {
-				String initResponse = serialSendReceive("AT+STGR="+ request.getMenuId()+",1");
-				if (notOk(initResponse)) {
-					return StkResponse.ERROR;
-				} else {
-					return (parseMenu(initResponse,""));
-				}
-			}
-			
-		} else {
-			//MenuItem: retrieve next menu
-			String initResponse="";
-			initResponse = serialSendReceive("AT+STGR="+ request.getMenuId()+",1,"+request.getMenuItemId());
-			if (notOk(initResponse)){
-				return StkResponse.ERROR;
-			} else {
-				String menuId = getMenuId(initResponse);
-				initResponse = serialSendReceive("AT+STGI="+menuId);
-				if (notOk(initResponse)){
-					return StkResponse.ERROR;
-				} else {
-					return (parseMenu(initResponse,menuId));
-				}
-			}
-		}
 	}
 
 	private StkResponse parseMenu(String serialSendReceive, String menuId) {
