@@ -13,13 +13,14 @@
 	
 	<repositories>
 		<repository>
+			<id>credit.frontlinesms.repo</id>
+			<name>FrontlineSMS:Credit Maven repository</name>
+			<url>http://dev.frontlinesms.com/credit/m2repo</url>
+		</repository>
+		<repository>
 			<id>frontlinesms.repo</id>
 			<name>FrontlineSMS Maven repository</name>
 			<url>http://dev.frontlinesms.com/m2repo</url>
-		</repository>
-		<repository>
-			<id>maven-repository.dev.java.net</id>
-			<url>http://download.java.net/maven/2/</url>
 		</repository>
 	</repositories>
 	
@@ -129,7 +130,7 @@
 		<dependency>
 			<groupId>net.frontlinesms.test</groupId>
 			<artifactId>hayescommandset-test</artifactId>
-			<version>0.0.2-SNAPSHOT</version>
+			<version>0.0.3-releasetest</version>
 		</dependency>
 	    <dependency>
 			<groupId>net.frontlinesms.core</groupId>
