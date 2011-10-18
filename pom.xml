@@ -132,11 +132,12 @@
 			<artifactId>hayescommandset-test</artifactId>
 			<version>0.0.3-releasetest</version>
 		</dependency>
-	    <dependency>
+	 <!--     <dependency>
 			<groupId>net.frontlinesms.core</groupId>
 			<artifactId>frontlinesms-test</artifactId>
 			<version>0.01.02-SNAPSHOT</version>
 			<scope>test</scope>
 	    </dependency>
+	  -->
 	</dependencies>
 </project>
