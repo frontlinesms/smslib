@@ -3,12 +3,15 @@
 	<groupId>net.frontlinesms.core</groupId>
 	<artifactId>smslib</artifactId>
 	<name>SMS Lib</name>
-	<version>1.1.0</version>
+	<version>1.1.0-SNAPSHOT</version>
 	<description>Fork of SMS Lib 2.? with adaptations for FrontlineSMS.  Sorry for forking :-(</description>
 	
 	<scm>
-		<connection>scm:git://frontlinesms.git.sourceforge.net/gitroot/frontlinesms/smslib.git</connection>
-		<developerConnection>scm:git:ssh://${sourceforge.username}@frontlinesms.git.sourceforge.net/gitroot/FrontlineSMS-Credit/smslib</developerConnection>
+		<!--  connection>scm:git://frontlinesms.git.sourceforge.net/gitroot/frontlinesms/smslib.git</connection>
+		<developerConnection>scm:git:ssh://${sourceforge.username}@frontlinesms.git.sourceforge.net/gitroot/FrontlineSMS-Credit/smslib</developerConnection>-->
+		
+		<connection>scm:git://github.com/frontlinesms/smslib.git</connection>
+		<developerConnection>scm:git:git@github.com:FrontlineSMS-Credit/smslib.git</developerConnection>
 	</scm>
 	
 	<repositories>
