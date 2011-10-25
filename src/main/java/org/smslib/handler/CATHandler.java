@@ -225,7 +225,7 @@ public class CATHandler implements ATHandler {
 		int errorRetries = 0;
 		while (true) {
 			int responseRetries = 0;
-			serialDriver.send(CUtils.replace("AT+CMGS=\"{1}\"\r", "\"{1}\"", "" + size));
+			serialDriver.send("AT+CMGS=" + '"' + size + '"' + '\r');
 			sleepWithoutInterruption(DELAY_CMGS);
 			while (!serialDriver.dataAvailable()) {
 				responseRetries++;
