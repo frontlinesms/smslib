@@ -48,7 +48,7 @@ public class CSerialDriver implements SerialPortEventListener {
 	/** The name of the serial port this conencts to. */
 	private String port;
 	
-	private String lastAtCommand;
+	String lastAtCommand;
 	
 	private int baud;
 
@@ -322,7 +322,11 @@ public class CSerialDriver implements SerialPortEventListener {
 							
 							if (matcher.find()
 									|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR\\s")
-									|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR: \\d+\\s")) break;
+									|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR: \\d+\\s")
+									|| response.matches("\\s*[+]CMGS[:] \\d+[\\r\\n]*OK\\s*")) break;
+							
+							//\n*\s*[\p{ASCII}]*\s*CMGS: \d+\n*OK\s*
+							//  "\r\n+CMGS: 98\r\n\r\nOK\r"
 						}
 					}
 				}

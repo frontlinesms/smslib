@@ -79,8 +79,9 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 				"OK\n+STIN: 1",
 				"+STGI: 1,\"Send money to 0704593656\nKsh50\",1\nOK",
 				"OK\r+STIN: 9",
-				"\r+STGI: \"Sending...\"\r\n\rOK\r");
-		
+				"\r+STGI: \"Sending...\"\r\n\rOK\n+STIN: 1",
+				"\r+STGI: 1,\"Sent Wait for M-PESA to reply\",0\nOK");
+	
 		StkRequest pinEntrySubmitRequest = new StkValuePrompt().getRequest();
 		
 		// when the confirmation prompt should be triggered by the previous action
@@ -97,7 +98,7 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 		
 		// then
 		verifySentToModem("AT+STGR=1,1,1",
-				"AT+STGI=9");
+				"AT+STGI=9","AT+STGI=1");
 		assertTrue(confirmationResponse instanceof StkConfirmationPromptResponse);
 		assertTrue(((StkConfirmationPromptResponse) confirmationResponse).isOk());
 	}
