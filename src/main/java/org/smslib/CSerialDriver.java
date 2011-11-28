@@ -31,6 +31,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.log4j.Logger;
+import org.smslib.CNewMsgMonitor.State;
 
 public class CSerialDriver implements SerialPortEventListener {
 	/** Prints to console a selection of full lines read and written to the serial port. */
@@ -176,7 +177,7 @@ public class CSerialDriver implements SerialPortEventListener {
 		}
 		if(eventType == SerialPortEvent.DATA_AVAILABLE) {
 			//System.out.println("\tRaising...");
-			if (newMsgMonitor != null) newMsgMonitor.raise(CNewMsgMonitor.DATA);
+			if (newMsgMonitor != null) newMsgMonitor.raise(State.DATA);
 			return;
 		}
 	}
@@ -191,9 +192,9 @@ public class CSerialDriver implements SerialPortEventListener {
 			buffer.append((char) c);
 		}
 		if (log != null) log.debug("ME(CL): " + formatLog(buffer));
-		if (newMsgMonitor != null && newMsgMonitor.getState() != CNewMsgMonitor.CMTI) {
+		if (newMsgMonitor != null && newMsgMonitor.getState() != State.CMTI) {
 			final String txt = buffer.toString();
-			newMsgMonitor.raise((txt.indexOf("+CMTI:") >= 0 || txt.indexOf("+CDSI:") >= 0) ? CNewMsgMonitor.CMTI : CNewMsgMonitor.IDLE);
+			newMsgMonitor.raise((txt.indexOf("+CMTI:") >= 0 || txt.indexOf("+CDSI:") >= 0) ? State.CMTI : State.IDLE);
 		}
 	}
 
@@ -266,99 +267,107 @@ public class CSerialDriver implements SerialPortEventListener {
 
 		while (retry < MAX_RETRIES) {
 			try {
-				while (true) {
-					while (true) {
-						if (stopFlag) return "+ERROR:\r\n";
-						int c = inStream.read();
-						if (c == -1) {
-							buffer.delete(0, buffer.length());
-							break;
-						}
-						buffer.append((char) c);
-						
-						if ((c == '\r') || (c == '\n') || (c == '>')) break;
-					}
-					String response = buffer.toString();
-
-					if(response.length() == 0
-							|| response.matches("\\s*[\\p{ASCII}]*\\s+READY\\s+")
-							|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR\\s")
-							|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR: \\d+\\s")
-							|| response.matches("\\s*[\\p{ASCII}]*\\s+SIM PIN\\s")
-							|| response.matches("\\s*\\>\\s*")) {
-						// When the '>' character starts a line, it shows that the device
-						// is waiting for input.  We should return quickly from this.
-						break;
-					} else if(response.matches("\\s*[+]((CMTI)|(CDSI))[:][^\r\n]*[\r\n]")) {
-						if (log != null) log.debug("ME: " + formatLog(buffer));
-						buffer.delete(0, buffer.length());
-						if (newMsgMonitor != null) newMsgMonitor.raise(CNewMsgMonitor.CMTI);
-						continue;
-					}
-					Matcher matcher = Pattern.compile("AT[+]STGR[=|,|\\d]").matcher(this.lastAtCommand);
-					if(matcher.find()) {
-						matcher = Pattern.compile("\\s*[\\p{ASCII}]*\\s*+STIN: \\d+\\s*").matcher(response);
-						
-						if (matcher.find()
-								|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR\\s")
-								|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR: \\d+\\s")) break;
-					} else {
-						matcher = Pattern.compile("AT").matcher(this.lastAtCommand);
-						if(matcher.find()) {
-							matcher = Pattern.compile("\\s*[\\p{ASCII}]*\\s+OK\\s").matcher(response);
-							if(matcher.find()) {
-								if(response.contains("Sending...")) {
-									matcher = Pattern.compile("\\s*[\\p{ASCII}]*\\s*+STIN: \\d+\\s*").matcher(response);
-					
-									if (matcher.find()
-											|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR\\s")
-											|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR: \\d+\\s")) break;
-								} else {
-									break;
-								}
-							}
-						} else {
-							matcher = Pattern.compile("\\s*[\\p{ASCII}]*\\s*+STIN: \\d+\\s*").matcher(response);
-							
-							if (matcher.find()
-									|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR\\s")
-									|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR: \\d+\\s")
-									|| response.matches("\\s*[+]CMGS[:] \\d+[\\r\\n]*OK\\s*")) break;
-							
-							//\n*\s*[\p{ASCII}]*\s*CMGS: \d+\n*OK\s*
-							//  "\r\n+CMGS: 98\r\n\r\nOK\r"
-						}
-					}
-				}
+				readResponseToBuffer(buffer);
 				retry = MAX_RETRIES;
+			} catch (ServiceDisconnectedException e) {
+				return "+ERROR:\r\n";
 			} catch (IOException e) {
-				e.printStackTrace();
-				if (retry < MAX_RETRIES) {
+				if (++retry <= MAX_RETRIES) {
+					if(log!=null) log.info("IOException reading from serial port.  Will retry.", e);
 					try { Thread.sleep(DELAY); } catch(InterruptedException ex) {}
-					++retry;
 				} else throw e;
 			}
 		}
 		if (log != null) log.debug("ME: " + formatLog(buffer));
 		clearBufferCheckCMTI();
-
-		if (buffer.indexOf("RING") > 0) {
+		
+		if(TRACE_IO) System.out.println("< " + buffer.toString());
+		
+		// check to see if any phone call alerts have been triggered
+		if (buffer.indexOf("RING") > 0) { // FIXME should this actually read ">= 0"?!
 			if (srv.isConnected()) {
-				Pattern p = Pattern.compile("\\+?\\d+");
-				Matcher m = p.matcher(buffer.toString());
-				m.find();
-				String phone = buffer.toString().substring(m.start(), m.end());
+				if (srv.getCallHandler() != null) {
+					Pattern p = Pattern.compile("\\+?\\d+");
+					Matcher m = p.matcher(buffer);
+					String phone = m.find()? m.group(): "";
+					srv.getCallHandler().received(srv, new CIncomingCall(phone, new java.util.Date()));
+				}
 
-				if (srv.getCallHandler() != null) srv.getCallHandler().received(srv, new CIncomingCall(phone, new java.util.Date()));
-
-				String response = buffer.toString();
-				response = response.replaceAll("\\s*RING\\s+[\\p{ASCII}]CLIP[[\\p{Alnum}][\\p{Punct}] ]+\\s\\s", "");
-				return response;
+				// strip all content relating to RING, and return the rest of the response
+				return buffer.toString().replaceAll("\\s*RING\\s+[\\p{ASCII}]CLIP[[\\p{Alnum}][\\p{Punct}] ]+\\s\\s", "");
 			} else return buffer.toString();
 		} else {
+			return buffer.toString();
+		}
+	}
+	
+	void readToBuffer(StringBuilder buffer) throws IOException, ServiceDisconnectedException {
+		while (true) {
+			if (stopFlag) throw new ServiceDisconnectedException();
+			int c = inStream.read();
+			if (c == -1) {
+				if(TRACE_IO) System.out.println("< " + buffer.toString());
+				buffer.delete(0, buffer.length());
+				break;
+			}
+			buffer.append((char) c);
+			
+			if ((c == '\r') || (c == '\n') || (c == '>')) return;
+		}
+	}
+	
+	void readResponseToBuffer(StringBuilder buffer) throws IOException, ServiceDisconnectedException {
+		while (true) {
+			readToBuffer(buffer);
 			String response = buffer.toString();
-			if(TRACE_IO) System.out.println("< " + response);
-			return response;
+
+			if(response.length() == 0
+					|| response.matches("\\s*[\\p{ASCII}]*\\s+READY\\s+")
+					|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR\\s")
+					|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR: \\d+\\s")
+					|| response.matches("\\s*[\\p{ASCII}]*\\s+SIM PIN\\s")
+					|| response.matches("\\s*\\	>\\s*")) {
+				// When the '>' character starts a line, it shows that the device
+				// is waiting for input.  We should return quickly from this. // FIXME "return quickly" is vague, and this '>' prompt is not unit tested.  Please clarify before merging with master. 
+				return;
+			} else if(response.matches("\\s*[+]((CMTI)|(CDSI))[:][^\r\n]*[\r\n]")) {
+				if (log != null) log.debug("ME: " + formatLog(buffer));
+				if(TRACE_IO) System.out.println("< " + buffer.toString());
+				buffer.delete(0, buffer.length());
+				if (newMsgMonitor != null) newMsgMonitor.raise(State.CMTI);
+				continue;
+			}
+			// TODO Why is this matcher not applied in the same way as previous match tests in the previous if statement?
+			Matcher matcher = Pattern.compile("AT[+]STGR[=|,|\\d]").matcher(this.lastAtCommand);
+			if(matcher.find()) {
+				matcher = Pattern.compile("\\s*[\\p{ASCII}]*\\s*+STIN: \\d+\\s*").matcher(response);
+				
+				if (matcher.find()
+						|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR\\s")
+						|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR: \\d+\\s")) return;
+			} else {
+				matcher = Pattern.compile("AT").matcher(this.lastAtCommand);
+				if(matcher.find()) {
+					matcher = Pattern.compile("\\s*[\\p{ASCII}]*\\s+OK\\s").matcher(response);
+					if(matcher.find()) {
+						if(response.contains("Sending...")) { // FIXME this looks suspiciously like it's MPESA-specific
+							matcher = Pattern.compile("\\s*[\\p{ASCII}]*\\s*+STIN: \\d+\\s*").matcher(response);
+			
+							if (matcher.find()
+									|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR\\s")
+									|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR: \\d+\\s")) return;
+						} else {
+							return;
+						}
+					}
+				} else {
+					matcher = Pattern.compile("\\s*[\\p{ASCII}]*\\s*+STIN: \\d+\\s*").matcher(response);
+					if (matcher.find()
+							|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR\\s")
+							|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR: \\d+\\s")
+							|| response.matches("\\s*[+]CMGS[:] \\d+[\\r\\n]*OK\\s*")) return;
+				}
+			}
 		}
 	}
 
@@ -415,3 +424,6 @@ public class CSerialDriver implements SerialPortEventListener {
 		} catch(InterruptedException ex) {}
 	}
 }
+
+@SuppressWarnings("serial")
+class ServiceDisconnectedException extends Exception {}

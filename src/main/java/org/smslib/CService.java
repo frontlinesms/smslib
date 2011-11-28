@@ -37,7 +37,6 @@ import serial.*;
 import org.apache.log4j.Logger;
 import org.smslib.handler.ATHandler;
 import org.smslib.handler.CATHandlerUtils;
-import org.smslib.handler.CATHandler_Wavecom_Stk;
 import org.smslib.sms.SmsMessageEncoding;
 import org.smslib.util.GsmAlphabet;
 import org.smslib.util.HexUtils;
@@ -1667,8 +1666,10 @@ public class CService {
 
 	public int getBatteryLevel() throws IOException {
 		String response = atHandler.getBatteryLevel();
-		if (response.matches("\\s*[\\p{ASCII}]*\\s+ERROR(?:: \\d+)?\\s+"))
+		if (response.trim().length() == 0 || // My Huawei E160 seems to return a blank string here.  In such a case it seems reasonable to return cleanly.
+				response.matches("\\s*[\\p{ASCII}]*\\s+ERROR(?:: \\d+)?\\s+")) {
 			return 0;
+		}
 		response = response.replaceAll("\\s+OK\\s+", "");
 		response = response.replaceAll("\\s+", "");
 		StringTokenizer tokens = new StringTokenizer(response, ":,");
@@ -1828,15 +1829,15 @@ public class CService {
 			LinkedList<CIncomingMessage> messageList = new LinkedList<CIncomingMessage>();
 			try {
 				while (!stopFlag) {
-					int state = newMsgMonitor.waitEvent(asyncPollInterval);
+					CNewMsgMonitor.State state = newMsgMonitor.waitEvent(asyncPollInterval);
 					if (stopFlag)
 						break;
 					if (isConnected()
 							&& (receiveMode == ReceiveMode.ASYNC_CNMI || receiveMode == ReceiveMode.ASYNC_POLL)) {
 						try {
-							if (state == CNewMsgMonitor.DATA
+							if (state == CNewMsgMonitor.State.DATA
 									&& !atHandler.dataAvailable()
-									&& newMsgMonitor.getState() != CNewMsgMonitor.CMTI)
+									&& newMsgMonitor.getState() != CNewMsgMonitor.State.CMTI)
 								continue;
 
 							newMsgMonitor.reset();
