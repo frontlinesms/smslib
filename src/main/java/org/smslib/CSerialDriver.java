@@ -23,13 +23,17 @@ package org.smslib;
 
 import serial.*;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PrintStream;
 import java.util.TooManyListenersException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.log4j.Logger;
 import org.smslib.CNewMsgMonitor.State;
 
@@ -120,8 +124,21 @@ public class CSerialDriver implements SerialPortEventListener {
 		serialPort.setInputBufferSize(BUFFER_SIZE);
 		serialPort.setOutputBufferSize(BUFFER_SIZE);
 		serialPort.enableReceiveTimeout(RECV_TIMEOUT);
-		inStream = serialPort.getInputStream();
-		outStream = serialPort.getOutputStream();
+		
+		// FIXME this line should obviously NOT be committed:
+		String modemName = port.replace('/', '_');
+		PrintStream fileLog;
+		try {
+			File f = new File("/Users/alex/temp/frontlinesmsmodemlogs/" + modemName + ".log");
+			f.getParentFile().mkdirs();
+			fileLog = new PrintStream(new FileOutputStream(f));
+//			fileLog = System.out;
+		} catch(Exception ex) {
+			ex.printStackTrace();
+			throw new RuntimeException(ex);
+		}
+		inStream = new LoggingInputStream(serialPort.getInputStream(), fileLog, ">>${thread}>>TX>>${stack}>>", '\r', '\n');
+		outStream = new LoggingOutputStream(serialPort.getOutputStream(), fileLog, ">>${thread}>>RX>>${stack}>>", '\r', '\n');
 		
 		//bjdw added to try and catch "WaitCommEvent: Error 5" when usb port is disconnected
 		serialPort.notifyOnCTS(true);
@@ -223,10 +240,6 @@ public class CSerialDriver implements SerialPortEventListener {
 		if (log != null) log.debug("TE: " + formatLog(new StringBuilder(s)));
 		if(TRACE_IO) System.out.println("> " + s);
 		
-		if (s.startsWith("AT+STGR=0,1,128") || s.startsWith("AT+STGR=0,1,1")){
-			System.out.println();
-		}
-		
 		for (int i = 0; i < s.length(); i++) {
 			outStream.write((byte) s.charAt(i));
 		}
@@ -317,6 +330,36 @@ public class CSerialDriver implements SerialPortEventListener {
 	}
 	
 	void readResponseToBuffer(StringBuilder buffer) throws IOException, ServiceDisconnectedException {
+		while (true) {
+			while (true) {
+				if (stopFlag) throw new ServiceDisconnectedException();
+				int c = inStream.read();
+				if (c == -1) {
+					buffer.delete(0, buffer.length());
+					break;
+				}
+				buffer.append((char) c);
+				if ((c == 0x0a) || (c == 0x0d)) break;
+			}
+			String response = buffer.toString();
+
+			if (response.length() == 0
+					|| response.matches("\\s*[\\p{ASCII}]*\\s+OK\\s")
+					|| response.matches("\\s*[\\p{ASCII}]*\\s+READY\\s+")
+					|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR\\s")
+					|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR: \\d+\\s")
+					|| response.matches("\\s*[\\p{ASCII}]*\\s+SIM PIN\\s"))
+				return;
+			else if (response.matches("\\s*[+]((CMTI)|(CDSI))[:][^\r\n]*[\r\n]")) {
+				if (log != null) log.debug("ME: " + formatLog(buffer));
+				buffer.delete(0, buffer.length());
+				if (newMsgMonitor != null) newMsgMonitor.raise(CNewMsgMonitor.State.CMTI);
+			}
+		}
+	}
+	
+	/** this is the new version of the method which we want to adopt once the old version is properly unit tested. */
+	void readResponseToBuffer_new_mpesastuff(StringBuilder buffer) throws IOException, ServiceDisconnectedException {
 		while (true) {
 			readToBuffer(buffer);
 			String response = buffer.toString();
@@ -427,3 +470,138 @@ public class CSerialDriver implements SerialPortEventListener {
 
 @SuppressWarnings("serial")
 class ServiceDisconnectedException extends Exception {}
+
+interface StreamLogger {
+	PrintStream getLog();
+	StringBuilder getBuffer();
+	String getLogPrefix();
+	char[] getTerminators();
+}
+
+class LoggingUtils {
+	private static final String THREAD = "${thread}";
+	private static final String STACK = "${stack}";
+	
+	static void log(StreamLogger logger) {
+		StringBuilder buffer = logger.getBuffer();
+		logger.getLog().println(logger.getLogPrefix() + translate(buffer));
+		buffer.delete(0, Integer.MAX_VALUE);
+	}
+	
+	private static String translate(CharSequence s) {
+		return StringEscapeUtils.escapeJava(s.toString());
+	}
+	
+	static boolean isTerminator(StreamLogger logger, int i) {
+		for(char c : logger.getTerminators()) if(c == i) return true;
+		return false;
+	}
+
+	public static String formatLogPrefix(String logPrefix) {
+		String log = logPrefix.replace(THREAD, Thread.currentThread().getName());
+		if(log.contains(STACK)) {
+			log = getLogPrefixWithStack(log);
+		}
+		return log;
+	}
+
+	private static String getLogPrefixWithStack(String logPrefix) {
+		// build stack
+		StringBuilder s = new StringBuilder();
+		for(StackTraceElement trace : Thread.currentThread().getStackTrace()) {
+			if(!trace.getClassName().equals("java.lang.Thread") &&
+					!trace.getClassName().equals("org.smslib.LoggingUtils") &&
+					!trace.getClassName().equals("org.smslib.LoggingInputStream") &&
+					!trace.getClassName().equals("org.smslib.LoggingOutputStream")) {
+				if(s.length() > 0) s.append('>');
+				s.append(trace.getClassName() + "." + trace.getMethodName());
+			}
+		}
+		return logPrefix.replace(STACK, s.toString());
+	}
+}
+
+class LoggingInputStream extends InputStream implements StreamLogger {
+	private InputStream in;
+	private PrintStream log;
+	private StringBuilder buffer = new StringBuilder();
+	private String logPrefix;
+	private char[] terminators;
+
+	public LoggingInputStream(InputStream in, PrintStream log, String logPrefix, char...terminators) {
+		this.in = in;
+		this.log = log;
+		this.logPrefix = logPrefix;
+		this.terminators = terminators;
+	}
+	
+	public char[] getTerminators() {
+		return terminators;
+	}
+	public StringBuilder getBuffer() {
+		return buffer;
+	}
+	public PrintStream getLog() {
+		return log;
+	}
+	public String getLogPrefix() {
+		return LoggingUtils.formatLogPrefix(logPrefix);
+	}
+
+	@Override
+	public synchronized int read() throws IOException {
+		int read = in.read();
+		buffer.append((char) read);
+		if(isTerminator(read)) {
+			LoggingUtils.log(this);
+			buffer.delete(0, Integer.MAX_VALUE);
+		}
+		return read;
+	}
+	
+	private boolean isTerminator(int i) {
+		return LoggingUtils.isTerminator(this, i);
+	}
+}
+
+class LoggingOutputStream extends OutputStream implements StreamLogger {
+	private OutputStream out;
+	private PrintStream log;
+	private StringBuilder buffer = new StringBuilder();
+	private String logPrefix;
+	private char[] terminators;
+	
+	public LoggingOutputStream(OutputStream out, PrintStream log, String logPrefix, char...terminators) {
+		this.out = out;
+		this.log = log;
+		this.logPrefix = logPrefix;
+		this.terminators = terminators;
+	}
+	
+	public char[] getTerminators() {
+		return terminators;
+	}
+	public StringBuilder getBuffer() {
+		return buffer;
+	}
+	public PrintStream getLog() {
+		return log;
+	}
+	public String getLogPrefix() {
+		return LoggingUtils.formatLogPrefix(logPrefix);
+	}
+
+	@Override
+	public synchronized void write(int c) throws IOException {
+		buffer.append((char) c);
+		if(isTerminator(c)) {
+			LoggingUtils.log(this);
+			buffer.delete(0, Integer.MAX_VALUE);
+		}
+		out.write(c);
+	}
+	
+	private boolean isTerminator(int i) {
+		return LoggingUtils.isTerminator(this, i);
+	}
+}

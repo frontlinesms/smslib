@@ -37,12 +37,47 @@ public class CSerialDriverTest extends BaseTestCase {
 		setPreviousAtCommandOnTheInstanceOfCSerialDriver("");
 	}
 	
-	public void testReadResponseToBuffer() throws IOException, ServiceDisconnectedException {
+	/**
+	 * Testing inputs and outputs that worked with the original implementation of {@link CSerialDriver#readResponseToBuffer(StringBuilder)}.
+	 * This test should pass in spite of any modifications made to the method in order to ensure backwards compatibility.
+	 * @throws IOException
+	 * @throws ServiceDisconnectedException
+	 */
+	public void testReadResponseToBuffer_original() throws IOException, ServiceDisconnectedException {
 		// TODO need to build up this test with examples that would have worked before the STK/MPESA
 		// code was added, and then fix the current code so that the tests still pass.
 		String[][] goodInputsAndOutputs = {
-				{ "OK\r", "OK\r" },
-				{"> ", "> "},
+				{ "", "" },
+				{ "OK\r", "" },
+				{ " OK\r", " OK\r" },
+				{ "\n\r\nOK\r", " \n\r\nOK\r" },
+				{ "\nAT\r\r\nOK\r", "\nAT\r\r\nOK\r" },
+				{ "+CMGS:123\rOK", "" },
+				{ "+CMGS:123\rOK\r", "+CMGS:123\rOK\r" },
+				{ "+CMGF: (0,1)\r\rOK\r", "+CMGF: (0,1)\r\rOK\r" },
+				{ " +CMGF: (0,1)\r\rOK\r", " +CMGF: (0,1)\r\rOK\r" },
+				{ "+CMGS: 12\r\rOK\r", "+CMGS: 12\r\rOK\r" },
+				{ "+CIND: (\"Voice Mail\",(0,1)),(\"service\",(0,1)),(\"call\",(0,1)),(\"Roam\",(0-2)),(\"signal\",(0-5)),(\"callsetup\",(0-3)),(\"smsfull\",(0,1))\"", "" },
+				{ "+CIND: (\"Voice Mail\",(0,1)),(\"service\",(0,1)),(\"call\",(0,1)),(\"Roam\",(0-2)),(\"signal\",(0-5)),(\"callsetup\",(0-3)),(\"smsfull\",(0,1))\"\r", "" },
+				{ "+CIND: (\"Voice Mail\",(0,1)),(\"service\",(0,1)),(\"call\",(0,1)),(\"Roam\",(0-2)),(\"signal\",(0-5)),(\"callsetup\",(0-3)),(\"smsfull\",(0,1))\"\rOK", "" },
+				{ "+CIND: (\"Voice Mail\",(0,1)),(\"service\",(0,1)),(\"call\",(0,1)),(\"Roam\",(0-2)),(\"signal\",(0-5)),(\"callsetup\",(0-3)),(\"smsfull\",(0,1))\"\rOK\r", "+CIND: (\"Voice Mail\",(0,1)),(\"service\",(0,1)),(\"call\",(0,1)),(\"Roam\",(0-2)),(\"signal\",(0-5)),(\"callsetup\",(0-3)),(\"smsfull\",(0,1))\"\rOK\r" },
+				{ "+MBAN: Copyright 2000-2004 Motorola, Inc.\rOK\r", "+MBAN: Copyright 2000-2004 Motorola, Inc.\rOK\r" },
+				{ "+CPMS: 2,28,2,28,2,28\r\rOK\r", "+CPMS: 2,28,2,28,2,28\r\rOK\r" },
+				{ "ERROR\r", "" },
+				{ "\nERROR\r", "\nERROR\r" },
+				{ "\n\r\n+CME ERROR: SIM PIN required\r\n", "" },
+				{ "\nAT^CURC=0\r\r\nOK\r", "\nAT^CURC=0\r\r\nOK\r" },
+				{ "\n\r\n+CME ERROR: 11\r", "\n\r\n+CME ERROR: 11\r" },
+				{ "\nAT+CLIP=1\r\r\n+CME ERROR: SIM PIN required\r\nATE0\r\r\nOK\r", "\nAT+CLIP=1\r\r\n+CME ERROR: SIM PIN required\r\nATE0\r\r\nOK\r" },
+				{ "\nAT+CLIP=1\r\r\n+CME ERROR: SIM PIN required\r\nAT+COPS=0\r\r\n+CME ERROR: SIM PIN required\r\nAT^CURC=0\r\r\nOK\r", "\nAT+CLIP=1\r\r\n+CME ERROR: SIM PIN required\r\nAT+COPS=0\r\r\n+CME ERROR: SIM PIN required\r\nAT^CURC=0\r\r\nOK\r" },
+				{ "\nAT+CPIN?\r\r\n+CPIN: SIM PIN\r", "\nAT+CPIN?\r\r\n+CPIN: SIM PIN\r" },
+				{ "\nAT+CPIN?\r\r\n+CPIN: READY\r", "" },
+				{ "\nAT+CLIP=1\r\r\nOK\r", "\nAT+CLIP=1\r\r\nOK\r" },
+				{ "", "" },
+				{ "", "" },
+				{ "", "" },
+				{ "", "" },
+				{ "", "" },
 		};
 		
 		for(String[] inputAndOutput: goodInputsAndOutputs) {
