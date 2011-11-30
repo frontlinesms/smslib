@@ -70,12 +70,34 @@ public class CServiceTest extends BaseTestCase {
 		// badly formed responses
 		testGetBattery(0, "+CBC: 123,");
 		testGetBattery(0, "+CBC: ,123");
+		testGetBattery(0, "+CBC: little,elephant");
 	}
 	
 	private void testGetBattery(int expectedValue, String atResponse) throws Exception {
 		when(mockAtHandler.getBatteryLevel()).thenReturn(atResponse);
 		int actualValue = cService.getBatteryLevel();
 		assertEquals("Battery level interpreted incorrectly: " + atResponse, expectedValue, actualValue);
+	}
+	
+	public void testGetSignalLevel() throws Exception {
+		// error responses
+		testGetSignalLevel(0, "");
+		testGetSignalLevel(0, "\nAT+CBC\r\r\n+CME ERROR: SIM PIN required\r\n");
+		
+		// well formed responses
+		testGetSignalLevel(58, "+CSQ: 18,99");
+		testGetSignalLevel(90, "+CSQ: 28,99");
+		
+		// badly formed responses
+		testGetSignalLevel(319, "+CSQ: ,99");
+		testGetSignalLevel(58, "+CSQ: 18,");
+		testGetSignalLevel(0, "+CSQ: sock,shoe");
+	}
+	
+	private void testGetSignalLevel(int expectedValue, String atResponse) throws Exception {
+		when(mockAtHandler.getSignalLevel()).thenReturn(atResponse);
+		int actualValue = cService.getSignalLevel();
+		assertEquals(expectedValue, actualValue);
 	}
 	
 	public void testIsError() {

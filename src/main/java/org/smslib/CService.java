@@ -1370,13 +1370,8 @@ public class CService {
 	}
 
 	public int getSignalLevel() throws IOException {
-		String response = atHandler.getSignalLevel();
-		if (isError(response)) return 0;
-		response = response.replaceAll("\\s+OK\\s+", "");
-		response = response.replaceAll("\\s+", "");
-		StringTokenizer tokens = new StringTokenizer(response, ":,");
-		tokens.nextToken();
-		return (Integer.parseInt(tokens.nextToken().trim()) * 100 / 31);
+		String response = getTokenized(atHandler.getSignalLevel(), 1);
+		return (safeParseInt(response.trim()) * 100 / 31);
 	}
 
 	public String getMsisdn() throws IOException {
