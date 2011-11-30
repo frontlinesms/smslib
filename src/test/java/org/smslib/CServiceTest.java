@@ -22,11 +22,26 @@ public class CServiceTest extends BaseTestCase {
 	
 //> CONSTANTS
 	
+//> INSTANCE VARIABLES
+	/** The instance of {@link CService} under test. */
+	CService cService;
+	ATHandler mockAtHandler;
+
+//> TEST SETUP
+	@Override
+	protected void setUp() throws Exception {
+		super.setUp();
+
+		this.mockAtHandler = mock(ATHandler.class);
+		this.cService = new CService(mockAtHandler);
+	}
+	
 //> TEST METHODS
 	/**
 	 * Test parsing of AT+CGMI responses in the {@link CService} class.
+	 * @throws Exception 
 	 */
-	public void testGetManufacturer() {
+	public void testGetManufacturer() throws Exception {
 		testGetManufacturer("SonyEricsson\r\rOK\r", "SonyEricsson");
 	}
 	
@@ -36,19 +51,66 @@ public class CServiceTest extends BaseTestCase {
 	 * @param expectedManufacturer The Manufacturer string that we expect the ATHandler to return.
 	 * @throws IOException if there was a problem communicating with the device. 
 	 */
-	private void testGetManufacturer(String atResponse, String expectedManufacturer) {
-		ATHandler handler = mock(ATHandler.class);
-		try {
-			when(handler.getManufacturer()).thenReturn(atResponse);
-		} catch (IOException e) { fail("Error creating mock."); }
+	private void testGetManufacturer(String atResponse, String expectedManufacturer) throws Exception {
+		when(mockAtHandler.getManufacturer()).thenReturn(atResponse);
 		
-		CService service = new CService(handler);
-		try {
-			String actualManufacturer = service.getManufacturer();
-			assertEquals(expectedManufacturer, actualManufacturer);
-		} catch(IOException ex) {
-			log.error("IOException thrown while getting manufacturer.", ex);
-			fail("There was an IOException thrown while getting manufacturer: " + ex.getMessage());
+		String actualManufacturer = cService.getManufacturer();
+		assertEquals(expectedManufacturer, actualManufacturer);
+	}
+	
+	public void testGetBattery() throws Exception {
+		// error responses
+		testGetBattery(0, "");
+		testGetBattery(0, "\nAT+CBC\r\r\n+CME ERROR: SIM PIN required\r\n");
+
+		// well formed responses
+		testGetBattery(37, "+CBC: 1,37");
+		testGetBattery(100, "+CBC: 0,100");
+		
+		// badly formed responses
+		testGetBattery(0, "+CBC: 123,");
+		testGetBattery(0, "+CBC: ,123");
+	}
+	
+	private void testGetBattery(int expectedValue, String atResponse) throws Exception {
+		when(mockAtHandler.getBatteryLevel()).thenReturn(atResponse);
+		int actualValue = cService.getBatteryLevel();
+		assertEquals("Battery level interpreted incorrectly: " + atResponse, expectedValue, actualValue);
+	}
+	
+	public void testIsError() {
+		String[] errors = {
+				"", // this is what CSerialDriver.getResponse() returns when it can't cope with things.  In the cases where isError() is used, this counts as an error.
+				"\rCME ERROR: 29\r",
+				"\n\r\n+CME ERROR: 11\r",
+				"\nAT+CBC\r\r\n+CME ERROR: SIM PIN required\r\n",
+				"\nERROR\r",
+		};
+		for(String errorResponse: errors) {
+			assertTrue(CService.isError(errorResponse));
+		}
+		
+		String[] notErrors = {
+				" ",
+				"somerandomtext",
+				" OK\r",
+				"\n\r\nOK\r",
+				"\nAT\r\r\nOK\r",
+				"+CMGS:123\rOK",
+				"+CMGS:123\rOK\r",
+				"+CMGF: (0,1)\r\rOK\r",
+				" +CMGF: (0,1)\r\rOK\r",
+				"+CMGS: 12\r\rOK\r",
+				"+CIND: (\"Voice Mail\",(0,1)),(\"service\",(0,1)),(\"call\",(0,1)),(\"Roam\",(0-2)),(\"signal\",(0-5)),(\"callsetup\",(0-3)),(\"smsfull\",(0,1))\"\rOK\r",
+				"+MBAN: Copyright 2000-2004 Motorola, Inc.\rOK\r",
+				"+CPMS: 2,28,2,28,2,28\r\rOK\r",
+				"\nAT^CURC=0\r\r\nOK\r",
+				"\nAT+CPIN?\r\r\n+CPIN: SIM PIN\r",
+				"\nAT+CPIN?\r\r\n+CPIN: READY\r",
+				"\nAT+CLIP=1\r\r\nOK\r",
+		};
+		for(String notErrorResponse: notErrors) {
+			assertFalse("Wrongly interpreted as error: <" + notErrorResponse + ">", CService.isError(notErrorResponse));
 		}
 	}
 	

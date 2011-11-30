@@ -27,6 +27,7 @@ import java.io.StringReader;
 import java.util.Calendar;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Random;
 import java.util.StringTokenizer;
 import java.util.TimeZone;
@@ -1315,7 +1316,7 @@ public class CService {
 
 	public String getSerialNo() throws IOException {
 		String response = atHandler.getSerialNo();
-		if (response.matches("\\s*[\\p{ASCII}]*\\s+ERROR(?:: \\d+)?\\s+")) return VALUE_NOT_REPORTED;
+		if (isError(response)) return VALUE_NOT_REPORTED;
 		response = response.replaceAll("\\s+OK\\s+", "");
 		response = response.replaceAll("\\s+", "");
 		response = response.replaceAll("\\D", "");
@@ -1324,7 +1325,7 @@ public class CService {
 
 	public String getImsi() throws IOException {
 		String response = atHandler.getImsi();
-		if (response.matches("\\s*[\\p{ASCII}]*\\s+ERROR(?:: \\d+)?\\s+")) return VALUE_NOT_REPORTED;
+		if (isError(response)) return VALUE_NOT_REPORTED;
 		response = response.replaceAll("\\s+OK\\s+", "");
 		response = response.replaceAll("\\s+", "");
 		return response;
@@ -1332,7 +1333,7 @@ public class CService {
 
 	public String getSwVersion() throws IOException {
 		String response = atHandler.getSwVersion();
-		if (response.matches("\\s*[\\p{ASCII}]*\\s+ERROR(?:: \\d+)?\\s+")) return VALUE_NOT_REPORTED;
+		if (isError(response)) return VALUE_NOT_REPORTED;
 		response = response.replaceAll("\\s+OK\\s+", "");
 		response = response.replaceAll("\\s+", "");
 		return response;
@@ -1343,22 +1344,34 @@ public class CService {
 	}
 
 	public int getBatteryLevel() throws IOException {
-		String response = atHandler.getBatteryLevel();
-		if (response.trim().length() == 0 || // My Huawei E160 seems to return a blank string here.  In such a case it seems reasonable to return cleanly.
-				response.matches("\\s*[\\p{ASCII}]*\\s+ERROR(?:: \\d+)?\\s+")) {
+		String response = getTokenized(atHandler.getBatteryLevel(), 2);
+		return safeParseInt(response);
+	}
+	
+	private static String getTokenized(String response, int tokenIndex) {
+		if(isError(response)) return "";
+		try {
+			response = response.replaceAll("\\s+OK\\s+", "");
+			response = response.replaceAll("\\s+", "");
+			StringTokenizer tokens = new StringTokenizer(response, ":,");
+			while(tokenIndex-- > 0) tokens.nextToken();
+			return tokens.nextToken();
+		} catch(NoSuchElementException ex) {
+			return "";
+		}
+	}
+	
+	private static int safeParseInt(String response) {
+		try {
+			return Integer.parseInt(response);
+		} catch(NumberFormatException ex) {
 			return 0;
 		}
-		response = response.replaceAll("\\s+OK\\s+", "");
-		response = response.replaceAll("\\s+", "");
-		StringTokenizer tokens = new StringTokenizer(response, ":,");
-		tokens.nextToken();
-		tokens.nextToken();
-		return Integer.parseInt(tokens.nextToken());
 	}
 
 	public int getSignalLevel() throws IOException {
 		String response = atHandler.getSignalLevel();
-		if (response.matches("\\s*[\\p{ASCII}]*\\s+ERROR(?:: \\d+)?\\s+")) return 0;
+		if (isError(response)) return 0;
 		response = response.replaceAll("\\s+OK\\s+", "");
 		response = response.replaceAll("\\s+", "");
 		StringTokenizer tokens = new StringTokenizer(response, ":,");
@@ -1566,6 +1579,10 @@ public class CService {
 			Thread.sleep(millis);
 		} catch(InterruptedException ex) {}
 		return System.currentTimeMillis() - startTime;
+	}
+	
+	static boolean isError(String response) {
+		return response.matches("()|(\\s*[\\p{ASCII}]*\\s+ERROR(?:: (\\w+ ?)+)?\\s+)");
 	}
 	
 	/**

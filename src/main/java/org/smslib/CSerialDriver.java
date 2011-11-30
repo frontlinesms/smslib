@@ -329,37 +329,8 @@ public class CSerialDriver implements SerialPortEventListener {
 		}
 	}
 	
-	void readResponseToBuffer(StringBuilder buffer) throws IOException, ServiceDisconnectedException {
-		while (true) {
-			while (true) {
-				if (stopFlag) throw new ServiceDisconnectedException();
-				int c = inStream.read();
-				if (c == -1) {
-					buffer.delete(0, buffer.length());
-					break;
-				}
-				buffer.append((char) c);
-				if ((c == 0x0a) || (c == 0x0d)) break;
-			}
-			String response = buffer.toString();
-
-			if (response.length() == 0
-					|| response.matches("\\s*[\\p{ASCII}]*\\s+OK\\s")
-					|| response.matches("\\s*[\\p{ASCII}]*\\s+READY\\s+")
-					|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR\\s")
-					|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR: \\d+\\s")
-					|| response.matches("\\s*[\\p{ASCII}]*\\s+SIM PIN\\s"))
-				return;
-			else if (response.matches("\\s*[+]((CMTI)|(CDSI))[:][^\r\n]*[\r\n]")) {
-				if (log != null) log.debug("ME: " + formatLog(buffer));
-				buffer.delete(0, buffer.length());
-				if (newMsgMonitor != null) newMsgMonitor.raise(CNewMsgMonitor.State.CMTI);
-			}
-		}
-	}
-	
 	/** this is the new version of the method which we want to adopt once the old version is properly unit tested. */
-	void readResponseToBuffer_new_mpesastuff(StringBuilder buffer) throws IOException, ServiceDisconnectedException {
+	void readResponseToBuffer(StringBuilder buffer) throws IOException, ServiceDisconnectedException {
 		while (true) {
 			readToBuffer(buffer);
 			String response = buffer.toString();

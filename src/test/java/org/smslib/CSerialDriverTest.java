@@ -6,6 +6,9 @@ import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Field;
 
+import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.log4j.Logger;
+
 import net.frontlinesms.junit.BaseTestCase;
 
 import static org.mockito.Mockito.*;
@@ -21,6 +24,10 @@ public class CSerialDriverTest extends BaseTestCase {
 	private CService cService;
 	/** input stream that {@link #csd} will read from */
 	private StringInputStream in;
+	/** input stream that {@link #refImplementation} will read from */
+	private StringInputStream refIn;
+	
+	private CSerialDriverReferenceImplementation refImplementation;
 	
 	@Override
 	protected void setUp() throws Exception {
@@ -35,22 +42,57 @@ public class CSerialDriverTest extends BaseTestCase {
 		
 		// set the last AT command to blank to prevent null pointer exceptions
 		setPreviousAtCommandOnTheInstanceOfCSerialDriver("");
+		
+		// set up reference implementation
+		refIn = new StringInputStream();
+		refImplementation = new CSerialDriverReferenceImplementation();
+		refImplementation.setInStream(this.refIn);
+	}
+	
+	/**
+	 * Testing inputs and outputs that have changed from the original implementation of {@link CSerialDriver#readResponseToBuffer(StringBuilder)}.
+	 * @throws Exception
+	 */
+	public void testReadResponseToBuffer_changed() throws Exception {
+		// { INPUT, ORIGINAL_OUTPUT, NEW_OUTPUT }
+		String[][] goodInputsAndOutputs = {
+				{ "\n\r\n+CME ERROR: SIM PIN required\r\n", "", "\n\r\n+CME ERROR: SIM PIN required\r\n" },
+				{ "\uFFFFAT+CBC\r\r\n+CME ERROR: SIM PIN required\r\n", "", "\uFFFFAT+CBC\r\r\n+CME ERROR: SIM PIN required\r\n" },
+				{ "\r\n+CME ERROR: SIM PIN required\r\n", "", "\r\n+CME ERROR: SIM PIN required\r\n" },
+				{ "", "" },
+				{ "", "" },
+				{ "", "" },
+		};	
+		
+		for(String[] inputAndOutput: goodInputsAndOutputs) {
+			// given
+			in.setString(inputAndOutput[0]);
+			refIn.setString(inputAndOutput[0]);
+			StringBuilder buffer = new StringBuilder();
+			StringBuilder refBuffer = new StringBuilder();
+			
+			// when
+			csd.readResponseToBuffer(buffer);
+			refImplementation.readResponseToBuffer(refBuffer);
+			
+			// then
+			assertEquals(inputAndOutput[2], buffer.toString());
+			assertEquals(inputAndOutput[1], refBuffer.toString());
+		}
 	}
 	
 	/**
 	 * Testing inputs and outputs that worked with the original implementation of {@link CSerialDriver#readResponseToBuffer(StringBuilder)}.
 	 * This test should pass in spite of any modifications made to the method in order to ensure backwards compatibility.
-	 * @throws IOException
-	 * @throws ServiceDisconnectedException
+	 * @throws Exception
 	 */
-	public void testReadResponseToBuffer_original() throws IOException, ServiceDisconnectedException {
-		// TODO need to build up this test with examples that would have worked before the STK/MPESA
-		// code was added, and then fix the current code so that the tests still pass.
+	public void testReadResponseToBuffer_original() throws Exception {
+		// { INPUT, OUTPUT }
 		String[][] goodInputsAndOutputs = {
 				{ "", "" },
 				{ "OK\r", "" },
 				{ " OK\r", " OK\r" },
-				{ "\n\r\nOK\r", " \n\r\nOK\r" },
+				{ "\n\r\nOK\r", "\n\r\nOK\r" },
 				{ "\nAT\r\r\nOK\r", "\nAT\r\r\nOK\r" },
 				{ "+CMGS:123\rOK", "" },
 				{ "+CMGS:123\rOK\r", "+CMGS:123\rOK\r" },
@@ -71,10 +113,10 @@ public class CSerialDriverTest extends BaseTestCase {
 				{ "\nAT+CLIP=1\r\r\n+CME ERROR: SIM PIN required\r\nATE0\r\r\nOK\r", "\nAT+CLIP=1\r\r\n+CME ERROR: SIM PIN required\r\nATE0\r\r\nOK\r" },
 				{ "\nAT+CLIP=1\r\r\n+CME ERROR: SIM PIN required\r\nAT+COPS=0\r\r\n+CME ERROR: SIM PIN required\r\nAT^CURC=0\r\r\nOK\r", "\nAT+CLIP=1\r\r\n+CME ERROR: SIM PIN required\r\nAT+COPS=0\r\r\n+CME ERROR: SIM PIN required\r\nAT^CURC=0\r\r\nOK\r" },
 				{ "\nAT+CPIN?\r\r\n+CPIN: SIM PIN\r", "\nAT+CPIN?\r\r\n+CPIN: SIM PIN\r" },
-				{ "\nAT+CPIN?\r\r\n+CPIN: READY\r", "" },
+				{ "\nAT+CPIN?\r\r\n+CPIN: READY\r", "\nAT+CPIN?\r\r\n+CPIN: READY\r" },
 				{ "\nAT+CLIP=1\r\r\nOK\r", "\nAT+CLIP=1\r\r\nOK\r" },
-				{ "", "" },
-				{ "", "" },
+				{ "\uFFFFAT+CBC\r\r\n+CME ERROR: SIM PIN required\r\n", "" },
+				{ "\r\n+CME ERROR: SIM PIN required\r\n", "" },
 				{ "", "" },
 				{ "", "" },
 				{ "", "" },
@@ -83,13 +125,17 @@ public class CSerialDriverTest extends BaseTestCase {
 		for(String[] inputAndOutput: goodInputsAndOutputs) {
 			// given
 			in.setString(inputAndOutput[0]);
+			refIn.setString(inputAndOutput[0]);
 			StringBuilder buffer = new StringBuilder();
+			StringBuilder refBuffer = new StringBuilder();
 			
 			// when
 			csd.readResponseToBuffer(buffer);
+			refImplementation.readResponseToBuffer(refBuffer);
 			
 			// then
 			assertEquals(inputAndOutput[1], buffer.toString());
+			assertEquals(inputAndOutput[1], refBuffer.toString());
 		}
 	}
 	
@@ -97,6 +143,8 @@ public class CSerialDriverTest extends BaseTestCase {
 		/* Test data of the form {streamContent, expectedBufferContent, ringCount=1, ringNumber=any} */
 		Object[][] goodInputsAndOutputs = {
 		};
+		
+		if(true) throw new RuntimeException("There is no test data here.  Please supply.");
 		
 		for(Object[] data: goodInputsAndOutputs) {
 			// setup
@@ -254,5 +302,48 @@ class ModemResponse {
 	public String getResponse() {
 		return response;
 	}
+}
+
+class CSerialDriverReferenceImplementation {
+	private CNewMsgMonitor newMsgMonitor;
+	private boolean stopFlag;
+	private InputStream inStream;
+	private Logger log;
 	
+	void readResponseToBuffer(StringBuilder buffer) throws IOException, ServiceDisconnectedException {
+		while (true) {
+			while (true) {
+				if (stopFlag) throw new ServiceDisconnectedException();
+				int c = inStream.read();
+				if (c == -1) {
+					buffer.delete(0, buffer.length());
+					break;
+				}
+				buffer.append((char) c);
+				if ((c == 0x0a) || (c == 0x0d)) break;
+			}
+			String response = buffer.toString();
+
+			if (response.length() == 0
+					|| response.matches("\\s*[\\p{ASCII}]*\\s+OK\\s")
+					|| response.matches("\\s*[\\p{ASCII}]*\\s+READY\\s+")
+					|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR\\s")
+					|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR: \\d+\\s")
+					|| response.matches("\\s*[\\p{ASCII}]*\\s+SIM PIN\\s"))
+				return;
+			else if (response.matches("\\s*[+]((CMTI)|(CDSI))[:][^\r\n]*[\r\n]")) {
+				if (log != null) log.debug("ME: " + formatLog(buffer));
+				buffer.delete(0, buffer.length());
+				if (newMsgMonitor != null) newMsgMonitor.raise(CNewMsgMonitor.State.CMTI);
+			}
+		}
+	}
+	
+	public void setInStream(InputStream in) {
+		this.inStream = in;
+	}
+	
+	private String formatLog(CharSequence s) {
+		return StringEscapeUtils.escapeJava(s.toString());
+	}
 }
