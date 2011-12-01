@@ -126,7 +126,7 @@ public class CSerialDriver implements SerialPortEventListener {
 		serialPort.enableReceiveTimeout(RECV_TIMEOUT);
 		
 		// FIXME this line should obviously NOT be committed:
-		if(false) {
+		if(true) {
 			String modemName = port.replace('/', '_');
 			PrintStream fileLog;
 			try {
@@ -535,6 +535,31 @@ class LoggingInputStream extends InputStream implements StreamLogger {
 		return read;
 	}
 	
+	@Override
+	public int available() throws IOException {
+		return in.available();
+	}
+	
+	@Override
+	public synchronized void mark(int readlimit) {
+		in.mark(readlimit);
+	}
+	
+	@Override
+	public boolean markSupported() {
+		return in.markSupported();
+	}
+	
+	@Override
+	public synchronized void reset() throws IOException {
+		in.reset();
+	}
+	
+	@Override
+	public long skip(long n) throws IOException {
+		return in.skip(n);
+	}
+	
 	private boolean isTerminator(int i) {
 		return LoggingUtils.isTerminator(this, i);
 	}
@@ -575,6 +600,11 @@ class LoggingOutputStream extends OutputStream implements StreamLogger {
 			buffer.delete(0, Integer.MAX_VALUE);
 		}
 		out.write(c);
+	}
+	
+	@Override
+	public void flush() throws IOException {
+		out.flush();
 	}
 	
 	private boolean isTerminator(int i) {

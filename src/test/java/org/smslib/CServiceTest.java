@@ -121,6 +121,75 @@ public class CServiceTest extends BaseTestCase {
 		assertEquals(expected, actual);
 	}
 	
+	public void testGetImsi() throws Exception {
+		// error responses
+		testGetMsisdn("* N/A *", "");
+		testGetMsisdn("* N/A *", "\nAT+CBC\r\r\n+CME ERROR: SIM PIN required\r\n");
+		
+		// badly formed responses
+		testGetImsi("* N/A *", "blah blah blah");
+	}
+	
+	private void testGetImsi(String expected, String atResponse) throws Exception {
+		when(mockAtHandler.getImsi()).thenReturn(atResponse);
+		String actual = cService.getImsi();
+		assertEquals(expected, actual);
+	}
+	
+	public void testModel() throws Exception {
+		// error responses
+		testGetMsisdn("* N/A *", "");
+		testGetMsisdn("* N/A *", "\nAT+CBC\r\r\n+CME ERROR: SIM PIN required\r\n");
+		testGetMsisdn("* N/A *", "ERROR");
+		
+		// well formed responses
+		testGetMsisdn("V635", "+CGMM: \"GSM900\",\"GSM1800\",\"GSM1900\",\"GSM850\",\"MODEL=V635\"");
+		testGetMsisdn("L6", "+CGMM: \"GSM900\",\"GSM1800\",\"GSM1900\",\"MODEL=L6\"");
+		testGetMsisdn("L Series", "+CGMM: \"L Series\"");
+		testGetMsisdn("DWM-156", "DWM-156\r\nOK");
+		testGetMsisdn("MTK2", "+CGMM: MTK2");
+
+		
+		// badly formed responses
+		testGetModel("* N/A *", "blah blah blah");
+	}
+	
+	private void testGetModel(String expected, String atResponse) throws Exception {
+		when(mockAtHandler.getModel()).thenReturn(atResponse);
+		String actual = cService.getModel();
+		assertEquals(expected, actual);
+	}
+	
+	public void testGetSwVersion() throws Exception {
+		// error responses
+		testGetMsisdn("* N/A *", "");
+		testGetMsisdn("* N/A *", "\nAT+CBC\r\r\n+CME ERROR: SIM PIN required\r\n");
+		
+		// badly formed responses
+		testGetSwVersion("* N/A *", "blah blah blah");
+	}
+	
+	private void testGetSwVersion(String expected, String atResponse) throws Exception {
+		when(mockAtHandler.getSwVersion()).thenReturn(atResponse);
+		String actual = cService.getSwVersion();
+		assertEquals(expected, actual);
+	}
+	
+	public void testGetSerialNo() throws Exception {
+		// error responses
+		testGetMsisdn("* N/A *", "");
+		testGetMsisdn("* N/A *", "\nAT+CBC\r\r\n+CME ERROR: SIM PIN required\r\n");
+		
+		// badly formed responses
+		testGetSerialNo("* N/A *", "blah blah blah");
+	}
+	
+	private void testGetSerialNo(String expected, String atResponse) throws Exception {
+		when(mockAtHandler.getSerialNo()).thenReturn(atResponse);
+		String actual = cService.getSerialNo();
+		assertEquals(expected, actual);
+	}
+	
 	public void testIsError() {
 		String[] errors = {
 				"", // this is what CSerialDriver.getResponse() returns when it can't cope with things.  In the cases where isError() is used, this counts as an error.
