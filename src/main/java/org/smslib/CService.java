@@ -32,6 +32,8 @@ import java.util.Random;
 import java.util.StringTokenizer;
 import java.util.TimeZone;
 import java.util.TooManyListenersException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import serial.*;
 
@@ -1375,16 +1377,8 @@ public class CService {
 	}
 
 	public String getMsisdn() throws IOException {
-		String response = atHandler.getMsisdn();
-		if (response.contains("ERROR")) return VALUE_NOT_REPORTED;
-		response = response.replaceAll("\\s+OK\\s+", "");
-		response = response.replaceAll("\\s+", "");
-		response = response.replaceAll(":", "");
-		int splitPoint = response.indexOf('"') + 1;
-		if (splitPoint != 0) response = response.substring(splitPoint, response.indexOf('"', splitPoint));
-		splitPoint = response.indexOf(',') + 1;
-		if (splitPoint != 0) response = response.substring(splitPoint, response.indexOf(',', splitPoint));
-		return response;
+	    Matcher m = Pattern.compile("(?:,\"?)(.*?)(?:\"?,)").matcher(atHandler.getMsisdn());
+	    return m.find()? m.group(1): VALUE_NOT_REPORTED;
 	}
 
 	/**

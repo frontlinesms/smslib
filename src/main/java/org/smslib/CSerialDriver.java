@@ -126,19 +126,24 @@ public class CSerialDriver implements SerialPortEventListener {
 		serialPort.enableReceiveTimeout(RECV_TIMEOUT);
 		
 		// FIXME this line should obviously NOT be committed:
-		String modemName = port.replace('/', '_');
-		PrintStream fileLog;
-		try {
-			File f = new File("/Users/alex/temp/frontlinesmsmodemlogs/" + modemName + ".log");
-			f.getParentFile().mkdirs();
-			fileLog = new PrintStream(new FileOutputStream(f));
-//			fileLog = System.out;
-		} catch(Exception ex) {
-			ex.printStackTrace();
-			throw new RuntimeException(ex);
+		if(false) {
+			String modemName = port.replace('/', '_');
+			PrintStream fileLog;
+			try {
+				File f = new File("/Users/alex/temp/frontlinesmsmodemlogs/" + modemName + ".log");
+				f.getParentFile().mkdirs();
+				fileLog = new PrintStream(new FileOutputStream(f));
+	//			fileLog = System.out;
+			} catch(Exception ex) {
+				ex.printStackTrace();
+				throw new RuntimeException(ex);
+			}
+			inStream = new LoggingInputStream(serialPort.getInputStream(), fileLog, ">>${thread}>>TX>>${stack}>>", '\r', '\n');
+			outStream = new LoggingOutputStream(serialPort.getOutputStream(), fileLog, ">>${thread}>>RX>>${stack}>>", '\r', '\n');
+		} else {
+			inStream = serialPort.getInputStream();
+			outStream = serialPort.getOutputStream();
 		}
-		inStream = new LoggingInputStream(serialPort.getInputStream(), fileLog, ">>${thread}>>TX>>${stack}>>", '\r', '\n');
-		outStream = new LoggingOutputStream(serialPort.getOutputStream(), fileLog, ">>${thread}>>RX>>${stack}>>", '\r', '\n');
 		
 		//bjdw added to try and catch "WaitCommEvent: Error 5" when usb port is disconnected
 		serialPort.notifyOnCTS(true);

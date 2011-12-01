@@ -100,6 +100,27 @@ public class CServiceTest extends BaseTestCase {
 		assertEquals(expectedValue, actualValue);
 	}
 	
+	public void testGetMsisdn() throws Exception {
+		// error responses
+		testGetMsisdn("* N/A *", "");
+		testGetMsisdn("* N/A *", "\nAT+CBC\r\r\n+CME ERROR: SIM PIN required\r\n");
+		
+		// well formed responses
+		testGetMsisdn("15555555555", "\n+CNUM: Owner Name,15555555555,129\r\n");
+		testGetMsisdn("0123456789", "\n+CNUM: ,\"0123456789\",122\r\nOK\r");
+		testGetMsisdn("2035551212", "+CNUM: ,\"2035551212\",129");
+		testGetMsisdn("8885551212", "\n+CNUM: \"Voice\",\"8885551212\",129\r\nOK\n");
+;		
+		// badly formed responses
+		testGetMsisdn("* N/A *", "\n+CNUM\r\n");
+	}
+	
+	private void testGetMsisdn(String expected, String atResponse) throws Exception {
+		when(mockAtHandler.getMsisdn()).thenReturn(atResponse);
+		String actual = cService.getMsisdn();
+		assertEquals(expected, actual);
+	}
+	
 	public void testIsError() {
 		String[] errors = {
 				"", // this is what CSerialDriver.getResponse() returns when it can't cope with things.  In the cases where isError() is used, this counts as an error.
