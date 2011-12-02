@@ -1265,7 +1265,6 @@ public class CService {
 
 	public String getSwVersion() throws IOException {
 		String response = atHandler.getSwVersion();
-		System.out.println(response);
 		return getRegexMatch(response, "\\S+( \\S+)*");
 	}
 

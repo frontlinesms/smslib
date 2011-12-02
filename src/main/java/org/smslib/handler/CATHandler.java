@@ -33,12 +33,6 @@ import org.smslib.stk.StkResponse;
 import org.apache.log4j.*;
 
 public class CATHandler implements ATHandler {
-	/**
-	 * Exceptionally fine logging level used when troubleshooting low-level problems with AT devices.
-	 * FIXME remove this and disable it
-	 */
-	//private static final boolean TRACE = false;
-	private static final boolean TRACE = true;
 	/** The value returned by {@link #sendMessage(int, String, String, String)} instead of a valid
 	 * SMSC reference number when sending a message failed. */
 	protected static final int SMSC_REF_NUMBER_SEND_FAILED = -1;
@@ -320,8 +314,6 @@ public class CATHandler implements ATHandler {
 	}
 
 	public String listMessages(MessageClass messageClass) throws IOException, UnrecognizedHandlerProtocolException, SMSLibDeviceException {
-		if(TRACE) System.out.println("CATHandler.listMessages() : " + this.getClass().getSimpleName());
-		
 		Protocol messageProtocol = srv.getProtocol();
 		switch (messageProtocol) {
 			case PDU:
@@ -369,13 +361,8 @@ public class CATHandler implements ATHandler {
 	 * @throws IOException if access to {@link ATHandler#serialDriver} throws an {@link IOException}
 	 */
 	public String serialSendReceive(String command) throws IOException {
-		if(TRACE) log.info("ISSUING COMMAND: " + command);
-		if(TRACE) System.out.println("[" + Thread.currentThread().getName() + "] ISSUING COMMAND: " + command);
 		serialDriver.send(command + END_OF_LINE);
-		String response = serialDriver.getResponse();
-		if(TRACE) log.info("RECEIVED RESPONSE: " + response);
-		if(TRACE) System.out.println("[" + Thread.currentThread().getName() + "] RECEIVED RESPONSE: " + response);
-		return response;
+		return serialDriver.getResponse();
 	}
 
 	/**

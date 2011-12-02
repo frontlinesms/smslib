@@ -120,10 +120,9 @@ public class CSerialDriver implements SerialPortEventListener {
 			String modemName = port.replace('/', '_');
 			PrintStream fileLog;
 			try {
-				File f = new File("/Users/alex/temp/frontlinesmsmodemlogs/" + modemName + ".log");
+				File f = new File(System.getProperty("user.home"), "/temp/frontlinesmsmodemlogs/" + modemName + "_" + System.currentTimeMillis() + ".log");
 				f.getParentFile().mkdirs();
 				fileLog = new PrintStream(new FileOutputStream(f));
-	//			fileLog = System.out;
 			} catch(Exception ex) {
 				ex.printStackTrace();
 				throw new RuntimeException(ex);
@@ -186,7 +185,6 @@ public class CSerialDriver implements SerialPortEventListener {
 			return;
 		}
 		if(eventType == SerialPortEvent.DATA_AVAILABLE) {
-			//System.out.println("\tRaising...");
 			if (newMsgMonitor != null) newMsgMonitor.raise(State.DATA);
 			return;
 		}
