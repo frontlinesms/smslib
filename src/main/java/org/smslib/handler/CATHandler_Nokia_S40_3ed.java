@@ -24,7 +24,7 @@ package org.smslib.handler;
 import java.io.IOException;
 
 import org.smslib.*;
-import org.smslib.CService.MessageClass;
+import org.smslib.service.MessageClass;
 import org.apache.log4j.*;
 
 /**

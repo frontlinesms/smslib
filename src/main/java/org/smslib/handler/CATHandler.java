@@ -25,7 +25,8 @@ import java.io.IOException;
 import java.util.*;
 
 import org.smslib.*;
-import org.smslib.CService.MessageClass;
+import org.smslib.service.MessageClass;
+import org.smslib.service.Protocol;
 import org.smslib.stk.NoStkSupportException;
 import org.smslib.stk.StkRequest;
 import org.smslib.stk.StkResponse;
@@ -287,7 +288,7 @@ public class CATHandler implements ATHandler {
 	/** Sends an SMS message and retrieves the SMSC reference number assigned to it. */
 	public int sendMessage(int size, String pdu, String phone, String text) throws IOException, NoResponseException, UnrecognizedHandlerProtocolException {
 		int smscReferenceNumber;
-		CService.Protocol messageProtocol = srv.getProtocol();
+		Protocol messageProtocol = srv.getProtocol();
 		switch(messageProtocol) {
 			case PDU:
 				smscReferenceNumber = sendMessage_PDU(size, pdu);
@@ -321,7 +322,7 @@ public class CATHandler implements ATHandler {
 	public String listMessages(MessageClass messageClass) throws IOException, UnrecognizedHandlerProtocolException, SMSLibDeviceException {
 		if(TRACE) System.out.println("CATHandler.listMessages() : " + this.getClass().getSimpleName());
 		
-		CService.Protocol messageProtocol = srv.getProtocol();
+		Protocol messageProtocol = srv.getProtocol();
 		switch (messageProtocol) {
 			case PDU:
 				return serialSendReceive("AT+CMGL=" + messageClass.getPduModeId());
@@ -426,8 +427,8 @@ public class CATHandler implements ATHandler {
 		return true;
 	}
 
-	public CService.Protocol getProtocol() {
-		return CService.Protocol.PDU;
+	public Protocol getProtocol() {
+		return Protocol.PDU;
 	}
 
 	public boolean supportsStk() {

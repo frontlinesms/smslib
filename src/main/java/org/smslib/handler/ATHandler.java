@@ -24,7 +24,8 @@ package org.smslib.handler;
 import java.io.IOException;
 
 import org.smslib.CService;
-import org.smslib.CService.MessageClass;
+import org.smslib.service.MessageClass;
+import org.smslib.service.Protocol;
 import org.smslib.NoResponseException;
 import org.smslib.SMSLibDeviceException;
 import org.smslib.UnrecognizedHandlerProtocolException;
@@ -160,7 +161,7 @@ public interface ATHandler {
 	 */
 	boolean supportsUcs2SmsSending();
 	
-	CService.Protocol getProtocol();
+	Protocol getProtocol();
 
 	boolean supportsStk();
 	

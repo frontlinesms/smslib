@@ -40,6 +40,7 @@ import serial.*;
 import org.apache.log4j.Logger;
 import org.smslib.handler.ATHandler;
 import org.smslib.handler.CATHandlerUtils;
+import org.smslib.service.*;
 import org.smslib.sms.SmsMessageEncoding;
 import org.smslib.util.GsmAlphabet;
 import org.smslib.util.HexUtils;
@@ -51,54 +52,22 @@ import org.smslib.stk.*;
  * This is the main SMSLib service class.
  */
 public class CService {
-	/** Dummy synchronization object. */
-	private final Object _SYNC_ = new Object();
-
-	/** Holds values representing the modem protocol used. */
-	public enum Protocol {
-		/** PDU protocol. */
-		PDU,
-		/** TEXT protocol. */
-		TEXT;
-	}
-
-	/**
-	 * Holds values representing receive mode.
-	 * 
-	 * @see CService#setReceiveMode(int)
-	 * @see CService#getReceiveMode()
-	 */
-	public static class ReceiveMode {
-		/** Synchronous reading. */
-		public static final int SYNC = 0;
-		/** Asynchronous reading - CMTI indications. */
-		public static final int ASYNC_CNMI = 1;
-		/** Asynchronous reading - polling. */
-		public static final int ASYNC_POLL = 2;
-	}
-
 	private static final int DISCONNECT_TIMEOUT = 10 * 1000;
-
-	private int keepAliveInterval = 30 * 1000;
-
-	private int asyncPollInterval = 10 * 1000;
-
-	private MessageClass asyncRecvClass = MessageClass.ALL;
-
-	private int retriesNoResponse = 5;
-
-	private int delayNoResponse = 5000;
-
-	/** number of times to retry an AT command before giving up when the response is a CMS error */
-	private int retriesCmsErrors = 5;
-
-	private int delayCmsErrors = 5000;
-
-	private final Logger log;
-
 	private static final String VALUE_NOT_REPORTED = "* N/A *";
 	/** {@link TimeZone} for UTC.  This is used to standardise times. */
 	private static final TimeZone TIMEZONE_UTC = TimeZone.getTimeZone("GMT");
+	
+	/** Dummy synchronization object. */
+	private final Object _SYNC_ = new Object();
+	private int keepAliveInterval = 30 * 1000;
+	private int asyncPollInterval = 10 * 1000;
+	private MessageClass asyncRecvClass = MessageClass.ALL;
+	private int retriesNoResponse = 5;
+	private int delayNoResponse = 5000;
+	/** number of times to retry an AT command before giving up when the response is a CMS error */
+	private int retriesCmsErrors = 5;
+	private int delayCmsErrors = 5000;
+	private final Logger log = Logger.getLogger(CService.class);
 	/** The SMSC number for this device.  If set <code>null</code>, a blank value will be used.  This usually allows a device to determine
 	 * the SMSC number for itself. */
 	private String smscNumber;
@@ -108,62 +77,39 @@ public class CService {
 	private String simPin2;
 	/** if <code>true</code>, {@link #connect()} will throw an exception if asked for SIM PIN2 and {@link #simPin2} is null. */
 	boolean throwExceptionOnMissingPin2;
-
-	private int receiveMode;
-
+	private ReceiveMode receiveMode;
 	private Protocol protocol;
-
 	private ATHandler atHandler;
-
-	private CNewMsgMonitor newMsgMonitor;
-
+	private final CNewMsgMonitor newMsgMonitor = new CNewMsgMonitor();
 	public CSerialDriver serialDriver;
-
 	private volatile boolean connected;
-
-	private final CDeviceInfo deviceInfo;
-
+	private final CDeviceInfo deviceInfo = new CDeviceInfo();
 	private CKeepAliveThread keepAliveThread;
-
 	private CReceiveThread receiveThread;
-
 	private ISmsMessageListener messageHandler;
-
 	private ICallListener callHandler;
-
 	private int outMpRefNo;
-
 	/** List of incomplete multipart message parts. */
 	private final LinkedList<LinkedList<CIncomingMessage>> mpMsgList = new LinkedList<LinkedList<CIncomingMessage>>();
 
 	/** Constructor used for Unit Tests. */
 	CService(ATHandler atHanndler) {
-		log = Logger.getLogger(CService.class);
 		this.atHandler = atHanndler;
-		this.deviceInfo = new CDeviceInfo();
 	}
 
 	/**
 	 * CService constructor.
-	 * 
-	 * @param port
-	 *            The comm port to use (i.e. COM1, /dev/ttyS1 etc).
-	 * @param baud
-	 *            The baud rate. 57600 is a good number to start with.
-	 * @param gsmDeviceManufacturer
-	 *            The manufacturer of the modem (i.e. Wavecom, Nokia, Siemens, etc).
-	 * @param gsmDeviceModel
-	 *            The model (i.e. M1306B, 6310i, etc).
+	 * @param port The comm port to use (i.e. COM1, /dev/ttyS1 etc).
+	 * @param baud The baud rate. 57600 is a good number to start with.
+	 * @param gsmDeviceManufacturer The manufacturer of the modem (i.e. Wavecom, Nokia, Siemens, etc).
+	 * @param gsmDeviceModel The model (i.e. M1306B, 6310i, etc).
 	 * @param catHandlerAlias TODO
 	 */
 	public CService(String port, int baud, String gsmDeviceManufacturer, String gsmDeviceModel, String catHandlerAlias) {
 		smscNumber = "";
 
 		serialDriver = new CSerialDriver(port, baud, this);
-		deviceInfo = new CDeviceInfo();
-		newMsgMonitor = new CNewMsgMonitor();
 
-		log = Logger.getLogger(CService.class);
 		log.info("Using port: " + port + " @ " + baud + " baud.");
 
 		try {
@@ -440,7 +386,7 @@ public class CService {
 	 *            The receive mode.
 	 * @see CService.ReceiveMode
 	 */
-	public void setReceiveMode(int receiveMode) throws IOException {
+	public void setReceiveMode(ReceiveMode receiveMode) throws IOException {
 		synchronized (_SYNC_) {
 			this.receiveMode = receiveMode;
 			if (connected) {
@@ -463,7 +409,7 @@ public class CService {
 	 * @return The Receive Mode.
 	 * @see CService.ReceiveMode
 	 */
-	public int getReceiveMode() {
+	public ReceiveMode getReceiveMode() {
 		return receiveMode;
 	}
 
@@ -473,7 +419,7 @@ public class CService {
 	 * CService object and before connecting. Otherwise, you will get an exception.
 	 * @param protocol The protocol to be used.
 	 */
-	public void setProtocol(CService.Protocol protocol) {
+	public void setProtocol(Protocol protocol) {
 		if (isConnected()) throw new RuntimeException("Cannot change protocol while connected!");
 		else this.protocol = protocol;
 	}
@@ -482,7 +428,7 @@ public class CService {
 	 * Returns the message protocol in use by this.
 	 * @return The protocol use.
 	 */
-	public CService.Protocol getProtocol() {
+	public Protocol getProtocol() {
 		return protocol;
 	}
 
@@ -633,7 +579,7 @@ public class CService {
 		while (timeout > 0 &&
 				((receiveThread!=null && !receiveThread.isStopped()) ||
 						(keepAliveThread!=null && !keepAliveThread.isStopped()))) {
-			timeout -= sleep_ignoreInterrupts(wait);
+			timeout -= CUtils.sleep_ignoreInterrupts(wait);
 		}
 
 		if(serialDriver!=null) serialDriver.killMe();
@@ -1287,58 +1233,40 @@ public class CService {
 					log.info("GSM: Invalid CREG response.");
 					throw new DebugException("GSM: Invalid CREG response.");
 			}
-			sleep_ignoreInterrupts(1000);
+			CUtils.sleep_ignoreInterrupts(1000);
 		}
 	}
 
 	public String getManufacturer() throws IOException {
 		String response = atHandler.getManufacturer();
-		if (response.contains("ERROR")) return VALUE_NOT_REPORTED;
-		response = response.replaceAll("\\s+OK\\s+", "");
-		response = response.replaceAll("\\s+", "");
-		response = response.replaceAll("\"", "");
-		response = response.replaceAll(",", "");
-		response = response.replaceAll(":", "");
-		return response;
+		if(isError(response)) return VALUE_NOT_REPORTED;
+		Matcher m = Pattern.compile("[\\w\\.-]+( {1,2}[\\w\\.-]+)*").matcher(response);
+		if(m.find()) return m.group().replaceAll("\\s", "");
+		else return VALUE_NOT_REPORTED;
 	}
 
 	public String getModel() throws IOException {
 		String response = atHandler.getModel();
 		if (response.contains("ERROR")) return VALUE_NOT_REPORTED;
-		response = response.replaceAll("\\s+OK\\s+", "");
-		response = response.replaceAll("\\s+", "");
-		response = response.replaceAll("\"", "");
-		response = response.replaceAll(",", "");
-		response = response.replaceAll(":", "");
-		if (response.toUpperCase().contains("MODEL=")) {
-			response = response.substring(response.indexOf("MODEL=") + "MODEL=".length());
-		}
-		return response;
+		Matcher m1 = Pattern.compile("(?:MODEL=(\\w+))").matcher(response);
+		if(m1.find()) return m1.group(1);
+		Matcher m2 = Pattern.compile("[\\w\\.-]+( {1,2}[\\w\\.-]+)*").matcher(response);
+		if(m2.find()) return m2.group();
+		else return VALUE_NOT_REPORTED;
 	}
 
 	public String getSerialNo() throws IOException {
-		String response = atHandler.getSerialNo();
-		if (isError(response)) return VALUE_NOT_REPORTED;
-		response = response.replaceAll("\\s+OK\\s+", "");
-		response = response.replaceAll("\\s+", "");
-		response = response.replaceAll("\\D", "");
-		return response;
+		return getRegexMatch(atHandler.getSerialNo(), "\\d+");
 	}
 
 	public String getImsi() throws IOException {
-		String response = atHandler.getImsi();
-		if (isError(response)) return VALUE_NOT_REPORTED;
-		response = response.replaceAll("\\s+OK\\s+", "");
-		response = response.replaceAll("\\s+", "");
-		return response;
+		return getRegexMatch(atHandler.getImsi(), "\\d+");
 	}
 
 	public String getSwVersion() throws IOException {
 		String response = atHandler.getSwVersion();
-		if (isError(response)) return VALUE_NOT_REPORTED;
-		response = response.replaceAll("\\s+OK\\s+", "");
-		response = response.replaceAll("\\s+", "");
-		return response;
+		System.out.println(response);
+		return getRegexMatch(response, "\\S+( \\S+)*");
 	}
 
 	public boolean getGprsStatus() throws IOException {
@@ -1348,6 +1276,12 @@ public class CService {
 	public int getBatteryLevel() throws IOException {
 		String response = getTokenized(atHandler.getBatteryLevel(), 2);
 		return safeParseInt(response);
+	}
+	
+	private static String getRegexMatch(String response, String regex) {
+		if (isError(response)) return VALUE_NOT_REPORTED;
+		Matcher m = Pattern.compile(regex).matcher(response);
+		return m.find()? m.group(): VALUE_NOT_REPORTED;
 	}
 	
 	private static String getTokenized(String response, int tokenIndex) {
@@ -1373,7 +1307,7 @@ public class CService {
 
 	public int getSignalLevel() throws IOException {
 		String response = getTokenized(atHandler.getSignalLevel(), 1);
-		return (safeParseInt(response.trim()) * 100 / 31);
+		return safeParseInt(response.trim()) * 100 / 31;
 	}
 
 	public String getMsisdn() throws IOException {
@@ -1415,7 +1349,6 @@ public class CService {
 
 	private class CKeepAliveThread extends Thread {
 		private volatile boolean stopFlag;
-
 		private volatile boolean stopped;
 
 		public CKeepAliveThread() {
@@ -1438,7 +1371,7 @@ public class CService {
 
 		public void run() {
 			while (!stopFlag) {
-				sleep_ignoreInterrupts(keepAliveInterval);
+				CUtils.sleep_ignoreInterrupts(keepAliveInterval);
 				if (stopFlag) break;
 				synchronized (_SYNC_) {
 					if (isConnected()) try {
@@ -1520,58 +1453,8 @@ public class CService {
 		}
 	}
 
-	/** Holds values representing the message class of the message to be read from the GSM device. */
-	public static enum MessageClass {
-		/** Read all messages. */
-		ALL(4, "ALL"),
-		/** Read unread messages. After reading, all returned messages will be marked as read. */
-		UNREAD(0, "REC UNREAD"),
-		/** Read already-read messages. */
-		READ(1, "REC READ");
-
-	//> INSTANCE PROPERTIES
-		/** text ID for this {@link MessageClass} when listing messages on a device in TEXT mode */
-		private final String textModeId;
-		/** integer ID for this {@link MessageClass} when listing messages on a device in PDU mode */
-		private final int pduModeId;
-
-	//> CONSTRUCTORS
-		/**
-		 * Create a new {@link MessageClass}
-		 * @param pduModeId value for {@link #pduModeId}
-		 * @param textModeId value for {@link #textModeId}
-		 */
-		MessageClass(int pduModeId, String textModeId) {
-			this.pduModeId = pduModeId;
-			this.textModeId = textModeId;
-		}
-
-		/** @return the text ID for this {@link MessageClass} when listing messages on a device in TEXT mode. */
-		public String getTextId() {
-			return this.textModeId;
-		}
-
-		/** @return the integer ID for this {@link MessageClass} when listing messages on a device in PDU mode. */
-		public int getPduModeId() {
-			return this.pduModeId;
-		}
-	}
-
-	/**
-	 * Make the thread sleep; ignore InterruptedExceptions.
-	 * @param millis
-	 * @return the number of milliseconds actually slept for
-	 */
-	public static long sleep_ignoreInterrupts(long millis) {
-		long startTime = System.currentTimeMillis();
-		try {
-			Thread.sleep(millis);
-		} catch(InterruptedException ex) {}
-		return System.currentTimeMillis() - startTime;
-	}
-	
 	static boolean isError(String response) {
-		return response.matches("()|(\\s*[\\p{ASCII}]*\\s+ERROR(?:: (\\w+ ?)+)?\\s+)");
+		return response.matches("()|(\\s*[\\p{ASCII}]*\\s+ERROR(: (\\w+ ?)+)?\\s+)");
 	}
 	
 	/**

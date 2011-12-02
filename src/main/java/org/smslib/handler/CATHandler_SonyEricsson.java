@@ -24,6 +24,7 @@ package org.smslib.handler;
 import java.io.IOException;
 
 import org.smslib.*;
+import org.smslib.service.Protocol;
 import org.apache.log4j.*;
 
 public class CATHandler_SonyEricsson extends CATHandler
@@ -60,7 +61,7 @@ public class CATHandler_SonyEricsson extends CATHandler
 		String response;
 		int refNo;
 
-		CService.Protocol messageProtocol = srv.getProtocol();
+		Protocol messageProtocol = srv.getProtocol();
 		switch (messageProtocol)
 		{
 			case PDU:

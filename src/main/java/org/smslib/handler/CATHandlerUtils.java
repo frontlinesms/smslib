@@ -83,7 +83,7 @@ public class CATHandlerUtils {
 	}
 	
 	/** List of all AT handler classes */
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings("rawtypes")
 	private static final Class[] HANDLERS = {
 		CATHandler.class,
 		CATHandler_Huawei.class,

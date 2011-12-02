@@ -35,4 +35,17 @@ public class CUtils
 		}
 		return text;
 	}
+
+	/**
+	 * Make the thread sleep; ignore InterruptedExceptions.
+	 * @param millis
+	 * @return the number of milliseconds actually slept for
+	 */
+	public static long sleep_ignoreInterrupts(long millis) {
+		long startTime = System.currentTimeMillis();
+		try {
+			Thread.sleep(millis);
+		} catch(InterruptedException ex) {}
+		return System.currentTimeMillis() - startTime;
+	}
 }

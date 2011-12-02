@@ -41,22 +41,15 @@ public class CSerialDriver implements SerialPortEventListener {
 	/** Prints to console a selection of full lines read and written to the serial port. */
 	private static final boolean TRACE_IO = false;
 	private static final boolean DEBUG = false;
-	
-	private static final int DELAY = 50;
-
-	private static final int DELAY_AFTER_WRITE = 50;
-
+	private static final int DELAY = 500;
+	private static final int DELAY_AFTER_WRITE = 100;
 	private static final int RECV_TIMEOUT = 30 * 1000;
-
 	private static final int BUFFER_SIZE = 16384;
 	
 	/** The name of the serial port this conencts to. */
 	private String port;
-	
 	String lastAtCommand;
-	
 	private int baud;
-
 	private CommPortIdentifier commPortIdentifier;
 	/** The serial port this connects to. */
 	public SerialPort serialPort;
@@ -64,15 +57,13 @@ public class CSerialDriver implements SerialPortEventListener {
 	private InputStream inStream;
 	/** Output stream of the serial port this connects to. */
 	private OutputStream outStream;
-	
 	private CNewMsgMonitor newMsgMonitor;
-	/** Set HIGH to stop current operations. */
+	/** Set <code>true</code> to stop current operations. */
 	private volatile boolean stopFlag;
 	/** The logger for this driver. */
 	private Logger log;
-
 	private CService srv;
-
+	
 	public CSerialDriver(String port, int baud, CService srv) {
 		if(DEBUG) System.out.println("CSerialDriver.CSerialDriver() : ENTRY");
 		this.port = port;
@@ -222,7 +213,7 @@ public class CSerialDriver implements SerialPortEventListener {
 
 	public void emptyBuffer() throws IOException {
 		if (log != null) log.debug("SerialDriver(): emptyBuffer() called");
-		sleep_ignoreInterrupts(DELAY);
+		CUtils.sleep_ignoreInterrupts(DELAY);
 		while(dataAvailable()) inStream.read();
 	}
 
@@ -236,7 +227,7 @@ public class CSerialDriver implements SerialPortEventListener {
 	}
 
 	public void clearBuffer() throws IOException {
-		sleep_ignoreInterrupts(DELAY);
+		CUtils.sleep_ignoreInterrupts(DELAY);
 		clearBufferCheckCMTI();
 	}
 
@@ -249,19 +240,19 @@ public class CSerialDriver implements SerialPortEventListener {
 			outStream.write((byte) s.charAt(i));
 		}
 		outStream.flush();
-		sleep_ignoreInterrupts(DELAY_AFTER_WRITE);
+		CUtils.sleep_ignoreInterrupts(DELAY_AFTER_WRITE);
 	}
 
 	public void send(char c) throws IOException {
 		outStream.write((byte) c);
 		outStream.flush();
-		sleep_ignoreInterrupts(DELAY_AFTER_WRITE);
+		CUtils.sleep_ignoreInterrupts(DELAY_AFTER_WRITE);
 	}
 
 	public void send(byte c) throws IOException {
 		outStream.write(c);
 		outStream.flush();
-		sleep_ignoreInterrupts(DELAY_AFTER_WRITE);
+		CUtils.sleep_ignoreInterrupts(DELAY_AFTER_WRITE);
 	}
 
 	public void skipBytes(int numOfBytes) throws IOException {
@@ -431,16 +422,6 @@ public class CSerialDriver implements SerialPortEventListener {
 
 	public void ownershipChange(int type) {
 		log.info("CSerialDriver.ownershipChange() : " + type);
-	}
-	
-	/**
-	 * Make the thread sleep; ignore InterruptedExceptions.
-	 * @param millis
-	 */
-	public static void sleep_ignoreInterrupts(long millis) {
-		try {
-			Thread.sleep(millis);
-		} catch(InterruptedException ex) {}
 	}
 }
 
