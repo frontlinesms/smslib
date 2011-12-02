@@ -56,12 +56,13 @@ public class CSerialDriverTest extends BaseTestCase {
 	public void testReadResponseToBuffer_changed() throws Exception {
 		// { INPUT, ORIGINAL_OUTPUT, NEW_OUTPUT }
 		String[][] goodInputsAndOutputs = {
-				{ "\n\r\n+CME ERROR: SIM PIN required\r\n", "", "\n\r\n+CME ERROR: SIM PIN required\r\n" },
-				{ "\uFFFFAT+CBC\r\r\n+CME ERROR: SIM PIN required\r\n", "", "\uFFFFAT+CBC\r\r\n+CME ERROR: SIM PIN required\r\n" },
-				{ "\r\n+CME ERROR: SIM PIN required\r\n", "", "\r\n+CME ERROR: SIM PIN required\r\n" },
-				{ "", "" },
-				{ "", "" },
-				{ "", "" },
+				{ "\n\r\n+CME ERROR: SIM PIN required\r\n", "", "\n\r\n+CME ERROR: SIM PIN required\r" },
+				{ "AT+CBC\r\r\n+CME ERROR: SIM PIN required\r\n", "", "AT+CBC\r\r\n+CME ERROR: SIM PIN required\r" },
+				{ "\r\n+CME ERROR: SIM PIN required\r\n", "", "\r\n+CME ERROR: SIM PIN required\r" },
+				{ "\nAT+CLIP=1\r\r\n+CME ERROR: SIM PIN required\r\nATE0\r\r\nOK\r", "\nAT+CLIP=1\r\r\n+CME ERROR: SIM PIN required\r\nATE0\r\r\nOK\r", "\nAT+CLIP=1\r\r\n+CME ERROR: SIM PIN required\r" },
+				{ "\nAT+CLIP=1\r\r\n+CME ERROR: SIM PIN required\r\nAT+COPS=0\r\r\n+CME ERROR: SIM PIN required\r\nAT^CURC=0\r\r\nOK\r", "\nAT+CLIP=1\r\r\n+CME ERROR: SIM PIN required\r\nAT+COPS=0\r\r\n+CME ERROR: SIM PIN required\r\nAT^CURC=0\r\r\nOK\r", "\nAT+CLIP=1\r\r\n+CME ERROR: SIM PIN required\r" },
+				{ "AT+CBC\r\r\n+CME ERROR: SIM PIN required\r\n", "", "AT+CBC\r\r\n+CME ERROR: SIM PIN required\r" },
+				{ "\r\n+CME ERROR: SIM PIN required\r\n", "", "\r\n+CME ERROR: SIM PIN required\r" },
 		};	
 		
 		for(String[] inputAndOutput: goodInputsAndOutputs) {
@@ -76,8 +77,8 @@ public class CSerialDriverTest extends BaseTestCase {
 			refImplementation.readResponseToBuffer(refBuffer);
 			
 			// then
-			assertEquals(inputAndOutput[2], buffer.toString());
 			assertEquals(inputAndOutput[1], refBuffer.toString());
+			assertEquals(inputAndOutput[2], buffer.toString());
 		}
 	}
 	
@@ -89,6 +90,7 @@ public class CSerialDriverTest extends BaseTestCase {
 	public void testReadResponseToBuffer_original() throws Exception {
 		// { INPUT, OUTPUT }
 		String[][] goodInputsAndOutputs = {
+				/* { IN, OUT } */
 				{ "", "" },
 				{ "OK\r", "" },
 				{ " OK\r", " OK\r" },
@@ -107,22 +109,72 @@ public class CSerialDriverTest extends BaseTestCase {
 				{ "+CPMS: 2,28,2,28,2,28\r\rOK\r", "+CPMS: 2,28,2,28,2,28\r\rOK\r" },
 				{ "ERROR\r", "" },
 				{ "\nERROR\r", "\nERROR\r" },
-				{ "\n\r\n+CME ERROR: SIM PIN required\r\n", "" },
 				{ "\nAT^CURC=0\r\r\nOK\r", "\nAT^CURC=0\r\r\nOK\r" },
 				{ "\n\r\n+CME ERROR: 11\r", "\n\r\n+CME ERROR: 11\r" },
-				{ "\nAT+CLIP=1\r\r\n+CME ERROR: SIM PIN required\r\nATE0\r\r\nOK\r", "\nAT+CLIP=1\r\r\n+CME ERROR: SIM PIN required\r\nATE0\r\r\nOK\r" },
-				{ "\nAT+CLIP=1\r\r\n+CME ERROR: SIM PIN required\r\nAT+COPS=0\r\r\n+CME ERROR: SIM PIN required\r\nAT^CURC=0\r\r\nOK\r", "\nAT+CLIP=1\r\r\n+CME ERROR: SIM PIN required\r\nAT+COPS=0\r\r\n+CME ERROR: SIM PIN required\r\nAT^CURC=0\r\r\nOK\r" },
 				{ "\nAT+CPIN?\r\r\n+CPIN: SIM PIN\r", "\nAT+CPIN?\r\r\n+CPIN: SIM PIN\r" },
 				{ "\nAT+CPIN?\r\r\n+CPIN: READY\r", "\nAT+CPIN?\r\r\n+CPIN: READY\r" },
 				{ "\nAT+CLIP=1\r\r\nOK\r", "\nAT+CLIP=1\r\r\nOK\r" },
-				{ "\uFFFFAT+CBC\r\r\n+CME ERROR: SIM PIN required\r\n", "" },
-				{ "\r\n+CME ERROR: SIM PIN required\r\n", "" },
-				{ "", "" },
-				{ "", "" },
-				{ "", "" },
+				{ "\r\n+CPMS: 25,25,25,25,25,25\r\n\r\nOK\r", "\r\n+CPMS: 25,25,25,25,25,25\r\n\r\nOK\r" },
+				{ "\r\n+CBC: 2,0\r\n\r\nOK\r", "\r\n+CBC: 2,0\r\n\r\nOK\r" },
+				{ "\n\r\nOK\r\n", "\n\r\nOK\r" },
+				{ " \r\nOK\r\n\r\n+STIN: 3\r", " \r\nOK\r" },
+				{ "\r\n+CMGL: 25,0,,130\r\n0791527422050000240AD04D68711A0400001121102142752180426BEDF67CDA6039D0F0ED36A7E5ED32D9055ACED136980B0603CDCB6E3A88FE060599456CD0492C4A414127B1289D3E9DA095AC46BBC164B5DCED168B81DE6E50EC1593BD623150980E8AC974321A08DA0439CB7750B3052D4E832071981D768FCBA0F41CB49CA36737568C2673C160\r\n\r\nOK\r", "\r\n+CMGL: 25,0,,130\r\n0791527422050000240AD04D68711A0400001121102142752180426BEDF67CDA6039D0F0ED36A7E5ED32D9055ACED136980B0603CDCB6E3A88FE060599456CD0492C4A414127B1289D3E9DA095AC46BBC164B5DCED168B81DE6E50EC1593BD623150980E8AC974321A08DA0439CB7750B3052D4E832071981D768FCBA0F41CB49CA36737568C2673C160\r\n\r\nOK\r" },
+				{ "\r\n+STGI: 0,0,0\r\n+STGI: 1,2,\"Search SIM Contacts\",0\r\n+STGI: 2,2,\"Enter phone no.\",0\r\n\r\nOK\r", "\r\n+STGI: 0,0,0\r\n+STGI: 1,2,\"Search SIM Contacts\",0\r\n+STGI: 2,2,\"Enter phone no.\",0\r\n\r\nOK\r" },
+				{ "\r\nOK\r\n\r\n+STIN: 6\r", "\r\nOK\r" },
+				{ "\r\n+STGI: 0,1,0,20,0,\"Enter phone no.\"\r\n\r\nOK\r", "\r\n+STGI: 0,1,0,20,0,\"Enter phone no.\"\r\n\r\nOK\r" },
+				{ "\r\n+CREG: 0,1\r\n\r\nOK\r", "\r\n+CREG: 0,1\r\n\r\nOK\r" },
+				{ "\r\n+CPMS: \"SM\",3,25,\"SM\",3,25,\"SM\",3,25\r\n\r\nOK\r", "\r\n+CPMS: \"SM\",3,25,\"SM\",3,25,\"SM\",3,25\r\n\r\nOK\r" },
+				{ "\r\n+CME ERROR: 3\r", "\r\n+CME ERROR: 3\r" },
+				{ "\r\n639029400593656\r\n\r\nOK\r", "\r\n639029400593656\r\n\r\nOK\r" },
+				{ "\r\n+STGI: 0,0,0,\"M-PESA\"\r\n+STGI: 1,7,\"Send money\",0\r\n+STGI: 2,7,\"Withdraw cash\",0\r\n+STGI: 3,7,\"Buy airtime\",0\r\n+STGI: 4,7,\"Pay Bill\",0\r\n+STGI: 5,7,\"Buy Goods\",0\r\n+STGI: 6,7,\"ATM Withdrawal\",0\r\n+STGI: 7,7,\"My account\",0\r\n\r\nOK\r", "\r\n+STGI: 0,0,0,\"M-PESA\"\r\n+STGI: 1,7,\"Send money\",0\r\n+STGI: 2,7,\"Withdraw cash\",0\r\n+STGI: 3,7,\"Buy airtime\",0\r\n+STGI: 4,7,\"Pay Bill\",0\r\n+STGI: 5,7,\"Buy Goods\",0\r\n+STGI: 6,7,\"ATM Withdrawal\",0\r\n+STGI: 7,7,\"My account\",0\r\n\r\nOK\r" },
+				{ " \r\nOK\r\n\r\n+STIN: 1\r", " \r\nOK\r" },
+				{ "\n", "" },
+				{ "\r\n+STGI: 0,0,4,4,0,\"Enter PIN\"\r\n\r\nOK\r", "\r\n+STGI: 0,0,4,4,0,\"Enter PIN\"\r\n\r\nOK\r" },
+				{ "\r\n+CSQ: 22,0\r\n\r\nOK\r", "\r\n+CSQ: 22,0\r\n\r\nOK\r" },
+				{ "\r\nE160\r\n\r\nOK\r", "\r\nE160\r\n\r\nOK\r" },
+				{ "\r\n+CMGL: 25,0,,120\r\n0791527422050000240AD04D68711A0400001121102103622174C6709A5D26BB40CD16B4380D82C661B7FB4D0781E0E13C683947C7602E180C447F8396456736E89C828C4F2968597466832E90F12D07B5DFF23228ED36BFE5ED303DFD7683C661361BF49683A6CD29685C9FD3DFEDB21C342FCBEDE971790E7ABB41B219CD05\r\n\r\nOK\r", "\r\n+CMGL: 25,0,,120\r\n0791527422050000240AD04D68711A0400001121102103622174C6709A5D26BB40CD16B4380D82C661B7FB4D0781E0E13C683947C7602E180C447F8396456736E89C828C4F2968597466832E90F12D07B5DFF23228ED36BFE5ED303DFD7683C661361BF49683A6CD29685C9FD3DFEDB21C342FCBEDE971790E7ABB41B219CD05\r\n\r\nOK\r" },
+				{ "\r\n MULTIBAND  900E  1800 \r\n\r\nOK\r", "\r\n MULTIBAND  900E  1800 \r\n\r\nOK\r" },
+				{ "\r\n+STGI: \"Sending...\"\r\n\r\nOK\r\n\r\n+STIN: 1\r", "\r\n+STGI: \"Sending...\"\r\n\r\nOK\r" },
+				{ "\n\r\n+STIN: 99\r\n", "" },
+				{ "\r\n WAVECOM WIRELESS CPU\r\n\r\nOK\r", "\r\n WAVECOM WIRELESS CPU\r\n\r\nOK\r" },
+				{ "\r\nR7.42.0.201003050914.GL6110 2131816 030510 09:14\r\n\r\nOK\r", "\r\nR7.42.0.201003050914.GL6110 2131816 030510 09:14\r\n\r\nOK\r" },
+				{ "\r\n+CBC: 0,0\r\n\r\nOK\r", "\r\n+CBC: 0,0\r\n\r\nOK\r" },
+				{ "\r\n+CNUM: \"flsms test no\",\"254704593656\",161\r\n\r\nOK\r", "\r\n+CNUM: \"flsms test no\",\"254704593656\",161\r\n\r\nOK\r" },
+				{ "\r\n+CPMS: 3,3,24,25,24,25\r\n\r\nOK\r", "\r\n+CPMS: 3,3,24,25,24,25\r\n\r\nOK\r" },
+				{ "\r\n+CGATT: 1\r\n\r\nOK\r", "\r\n+CGATT: 1\r\n\r\nOK\r" },
+				{ "\r\n+STIN: 99\r\n\r\nOK\r", "\r\n+STIN: 99\r\n\r\nOK\r" },
+				{ "\r\nOK\r\n\r\nOK\r\n\r\nOK\r\n\r\nOK\r\n", "\r\nOK\r" },
+				{ "\r\n+STGI: 1,\"Send money to +254702597711\nKsh60\",1\r\n\r\nOK\r", "\r\n+STGI: 1,\"Send money to +254702597711\nKsh60\",1\r\n\r\nOK\r" },
+				{ "\r\n+STGI: 0,1,0,8,0,\"Enter amount\"\r\n\r\nOK\r", "\r\n+STGI: 0,1,0,8,0,\"Enter amount\"\r\n\r\nOK\r" },
+				{ "\r\nhuawei\r\n\r\nOK\r", "\r\nhuawei\r\n\r\nOK\r" },
+				{ "\r\n+STGI: 0,0,0\r\n+STGI: 1,2,\"Search SIM Contacts\",0\r\n+STGI: 2,2,\"Enter account no.\",0\r\n\r\nOK\r", "\r\n+STGI: 0,0,0\r\n+STGI: 1,2,\"Search SIM Contacts\",0\r\n+STGI: 2,2,\"Enter account no.\",0\r\n\r\nOK\r" },
+				{ "\r\n639029400629385\r\n\r\nOK\r", "\r\n639029400629385\r\n\r\nOK\r" },
+				{ "\r\n+STGI: \"Safaricom\"\r\n+STGI: 1,2,\"Safaricom+\",0,0\r\n+STGI: 128,2,\"M-PESA\",0,21\r\n\r\nOK\r", "\r\n+STGI: \"Safaricom\"\r\n+STGI: 1,2,\"Safaricom+\",0,0\r\n+STGI: 128,2,\"M-PESA\",0,21\r\n\r\nOK\r" },
+				{ "\r\n+CPMS: 3,3,25,25,25,25\r\n\r\nOK\r", "\r\n+CPMS: 3,3,25,25,25,25\r\n\r\nOK\r" },
+				{ "\r\n+CPMS: 24,25,24,25,24,25\r\n\r\nOK\r", "\r\n+CPMS: 24,25,24,25,24,25\r\n\r\nOK\r" },
+				{ "\r\n+STGI: 1,1,0,20,0,\"Enter account no.\"\r\n\r\nOK\r", "\r\n+STGI: 1,1,0,20,0,\"Enter account no.\"\r\n\r\nOK\r" },
+				{ "\r\n+STGI: 0,1,0,20,0,\"Enter business no.\"\r\n\r\nOK\r", "\r\n+STGI: 0,1,0,20,0,\"Enter business no.\"\r\n\r\nOK\r" },
+				{ "\r\n", "" },
+				{ "\r\nOK\r\n\r\n+STIN: 3\r", "\r\nOK\r" },
+				{ "\r\n359126030100432\r\n\r\nOK\r", "\r\n359126030100432\r\n\r\nOK\r" },
+				{ "\r\nOK\r\n\r\n+STIN: 99\r", "\r\nOK\r" },
+				{ "\r\n+CPIN: READY\r", "\r\n+CPIN: READY\r" },
+				{ "\r\n+STGI: 0,0,0\r\n+STGI: 1,2,\"Search SIM Contacts\",0\r\n+STGI: 2,2,\"Enter business no.\",0\r\n\r\nOK\r", "\r\n+STGI: 0,0,0\r\n+STGI: 1,2,\"Search SIM Contacts\",0\r\n+STGI: 2,2,\"Enter business no.\",0\r\n\r\nOK\r" },
+				{ "\r\n11.608.02.00.94\r\n\r\nOK\r", "\r\n11.608.02.00.94\r\n\r\nOK\r" },
+				{ "\r\n+STGI: 1,\"Pay Bill 111111 Account 111111\nKsh10\",1\r\n\r\nOK\r", "\r\n+STGI: 1,\"Pay Bill 111111 Account 111111\nKsh10\",1\r\n\r\nOK\r" },
+				{ "\r\n351596033790603\r\n\r\nOK\r", "\r\n351596033790603\r\n\r\nOK\r" },
+				{ "\r\nOK\r", "\r\nOK\r" },
+				{ "\r\n+CSQ: 14,99\r\n\r\nOK\r", "\r\n+CSQ: 14,99\r\n\r\nOK\r" },
+				{ "\n\r\nOK\r", "\n\r\nOK\r" },
+				{ "\r\nOK\r\n\r\n+STIN: 9\r", "\r\nOK\r" },
+				{ "\r\n+CGATT: 0\r\n\r\nOK\r", "\r\n+CGATT: 0\r\n\r\nOK\r" },
+				{ "\r\n+STGI: 1,\"Sent\nWait for M-PESA to reply\",0\r\n\r\nOK\r", "\r\n+STGI: 1,\"Sent\nWait for M-PESA to reply\",0\r\n\r\nOK\r" },
+				{ " \r\nOK\r\n\r\n+STIN: 6\r", " \r\nOK\r" },
 		};
 		
-		for(String[] inputAndOutput: goodInputsAndOutputs) {
+		for(int i=0; i<goodInputsAndOutputs.length; ++i) {
+			String[] inputAndOutput = goodInputsAndOutputs[i];
+			
 			// given
 			in.setString(inputAndOutput[0]);
 			refIn.setString(inputAndOutput[0]);
@@ -134,8 +186,8 @@ public class CSerialDriverTest extends BaseTestCase {
 			refImplementation.readResponseToBuffer(refBuffer);
 			
 			// then
-			assertEquals(inputAndOutput[1], buffer.toString());
-			assertEquals(inputAndOutput[1], refBuffer.toString());
+			assertEquals("Reference implementation broken for entry " + i, inputAndOutput[1], refBuffer.toString());
+			assertEquals("New implementation broken for entry " + i, inputAndOutput[1], buffer.toString());
 		}
 	}
 	
@@ -257,9 +309,9 @@ public class CSerialDriverTest extends BaseTestCase {
 	}
 
 	private void setPreviousAtCommandOnTheInstanceOfCSerialDriver(Object previousAtCommand) throws SecurityException, NoSuchFieldException, IllegalArgumentException, IllegalAccessException {
-		Class<?> c = CSerialDriver.class;
-		Field fld = c.getDeclaredField("lastAtCommand");
-		fld.set(csd, previousAtCommand);
+//		Class<?> c = CSerialDriver.class;
+//		Field fld = c.getDeclaredField("lastAtCommand");
+//		fld.set(csd, previousAtCommand);
 	}
 }
 

@@ -33,14 +33,16 @@ import java.util.TooManyListenersException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.log4j.Logger;
 import org.smslib.CNewMsgMonitor.State;
+import org.smslib.logging.LoggingInputStream;
+import org.smslib.logging.LoggingOutputStream;
+
+import static org.apache.commons.lang3.StringEscapeUtils.escapeJava;
 
 public class CSerialDriver implements SerialPortEventListener {
 	/** Prints to console a selection of full lines read and written to the serial port. */
-	private static final boolean TRACE_IO = false;
-	private static final boolean DEBUG = false;
+	private static final boolean STREAM_LOGGING_ENABLED = true;
 	private static final int DELAY = 500;
 	private static final int DELAY_AFTER_WRITE = 100;
 	private static final int RECV_TIMEOUT = 30 * 1000;
@@ -48,7 +50,6 @@ public class CSerialDriver implements SerialPortEventListener {
 	
 	/** The name of the serial port this conencts to. */
 	private String port;
-	String lastAtCommand;
 	private int baud;
 	private CommPortIdentifier commPortIdentifier;
 	/** The serial port this connects to. */
@@ -65,12 +66,10 @@ public class CSerialDriver implements SerialPortEventListener {
 	private CService srv;
 	
 	public CSerialDriver(String port, int baud, CService srv) {
-		if(DEBUG) System.out.println("CSerialDriver.CSerialDriver() : ENTRY");
 		this.port = port;
 		this.baud = baud;
 		this.srv = srv;
 		this.log = Logger.getLogger(CSerialDriver.class);
-		if(DEBUG) System.out.println("CSerialDriver.CSerialDriver() : EXIT");
 	}
 
 	public void setPort(String port) {
@@ -117,7 +116,7 @@ public class CSerialDriver implements SerialPortEventListener {
 		serialPort.enableReceiveTimeout(RECV_TIMEOUT);
 		
 		// FIXME this line should obviously NOT be committed:
-		if(true) {
+		if(STREAM_LOGGING_ENABLED) {
 			String modemName = port.replace('/', '_');
 			PrintStream fileLog;
 			try {
@@ -170,11 +169,9 @@ public class CSerialDriver implements SerialPortEventListener {
 			return;
 		}
 		if(eventType == SerialPortEvent.CTS) {
-			if(DEBUG) System.out.println("CSERIAL DRIVER ->> CTS event:"+event.getNewValue()+ "on "+port);
 			//numberOfCTSevents++;
 			if (/*(numberOfCTSevents>=MAX_CTS_EVENTS_BEFORE_CLOSE) &&*/ !event.getNewValue()) {
 				//try disconnect
-				if(DEBUG) System.out.println("CSERIAL DRIVER ->> CTS event: closing port");
 				close();
 			}
 			return;
@@ -204,7 +201,7 @@ public class CSerialDriver implements SerialPortEventListener {
 			if (c == -1) break;
 			buffer.append((char) c);
 		}
-		if (log != null) log.debug("ME(CL): " + formatLog(buffer));
+		if (log != null) log.debug("ME(CL): " + escapeJava(buffer.toString()));
 		if (newMsgMonitor != null && newMsgMonitor.getState() != State.CMTI) {
 			final String txt = buffer.toString();
 			newMsgMonitor.raise((txt.indexOf("+CMTI:") >= 0 || txt.indexOf("+CDSI:") >= 0) ? State.CMTI : State.IDLE);
@@ -232,10 +229,8 @@ public class CSerialDriver implements SerialPortEventListener {
 	}
 
 	public void send(String s) throws IOException {
-		this.lastAtCommand = s;
-		if (log != null) log.debug("TE: " + formatLog(new StringBuilder(s)));
-		if(TRACE_IO) System.out.println("> " + s);
-		
+		if (log != null) log.debug("TE: " + escapeJava(new StringBuilder(s).toString()));
+
 		for (int i = 0; i < s.length(); i++) {
 			outStream.write((byte) s.charAt(i));
 		}
@@ -287,10 +282,8 @@ public class CSerialDriver implements SerialPortEventListener {
 				} else throw e;
 			}
 		}
-		if (log != null) log.debug("ME: " + formatLog(buffer));
+		if (log != null) log.debug("ME: " + escapeJava(buffer.toString()));
 		clearBufferCheckCMTI();
-		
-		if(TRACE_IO) System.out.println("< " + buffer.toString());
 		
 		// check to see if any phone call alerts have been triggered
 		if (buffer.indexOf("RING") > 0) { // FIXME should this actually read ">= 0"?!
@@ -315,7 +308,6 @@ public class CSerialDriver implements SerialPortEventListener {
 			if (stopFlag) throw new ServiceDisconnectedException();
 			int c = inStream.read();
 			if (c == -1) {
-				if(TRACE_IO) System.out.println("< " + buffer.toString());
 				buffer.delete(0, buffer.length());
 				break;
 			}
@@ -331,93 +323,18 @@ public class CSerialDriver implements SerialPortEventListener {
 			readToBuffer(buffer);
 			String response = buffer.toString();
 
-			if(response.length() == 0
+			if (response.length() == 0
+					|| response.matches("\\s*[\\p{ASCII}]*\\s+OK\\s")
 					|| response.matches("\\s*[\\p{ASCII}]*\\s+READY\\s+")
-					|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR\\s")
-					|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR: \\d+\\s")
-					|| response.matches("\\s*[\\p{ASCII}]*\\s+SIM PIN\\s")
-					|| response.matches("\\s*\\	>\\s*")) {
-				// When the '>' character starts a line, it shows that the device
-				// is waiting for input.  We should return quickly from this. // FIXME "return quickly" is vague, and this '>' prompt is not unit tested.  Please clarify before merging with master. 
+					|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR(:( \\w+)+)?\\s")
+					|| response.matches("\\s*[\\p{ASCII}]*\\s+SIM PIN\\s"))
 				return;
-			} else if(response.matches("\\s*[+]((CMTI)|(CDSI))[:][^\r\n]*[\r\n]")) {
-				if (log != null) log.debug("ME: " + formatLog(buffer));
-				if(TRACE_IO) System.out.println("< " + buffer.toString());
+			else if (response.matches("\\s*[+]((CMTI)|(CDSI))[:][^\r\n]*[\r\n]")) {
+				if (log != null) log.debug("ME: " + escapeJava(buffer.toString()));
 				buffer.delete(0, buffer.length());
-				if (newMsgMonitor != null) newMsgMonitor.raise(State.CMTI);
-				continue;
-			}
-			// TODO Why is this matcher not applied in the same way as previous match tests in the previous if statement?
-			Matcher matcher = Pattern.compile("AT[+]STGR[=|,|\\d]").matcher(this.lastAtCommand);
-			if(matcher.find()) {
-				matcher = Pattern.compile("\\s*[\\p{ASCII}]*\\s*+STIN: \\d+\\s*").matcher(response);
-				
-				if (matcher.find()
-						|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR\\s")
-						|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR: \\d+\\s")) return;
-			} else {
-				matcher = Pattern.compile("AT").matcher(this.lastAtCommand);
-				if(matcher.find()) {
-					matcher = Pattern.compile("\\s*[\\p{ASCII}]*\\s+OK\\s").matcher(response);
-					if(matcher.find()) {
-						if(response.contains("Sending...")) { // FIXME this looks suspiciously like it's MPESA-specific
-							matcher = Pattern.compile("\\s*[\\p{ASCII}]*\\s*+STIN: \\d+\\s*").matcher(response);
-			
-							if (matcher.find()
-									|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR\\s")
-									|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR: \\d+\\s")) return;
-						} else {
-							return;
-						}
-					}
-				} else {
-					matcher = Pattern.compile("\\s*[\\p{ASCII}]*\\s*+STIN: \\d+\\s*").matcher(response);
-					if (matcher.find()
-							|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR\\s")
-							|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR: \\d+\\s")
-							|| response.matches("\\s*[+]CMGS[:] \\d+[\\r\\n]*OK\\s*")) return;
-				}
+				if (newMsgMonitor != null) newMsgMonitor.raise(CNewMsgMonitor.State.CMTI);
 			}
 		}
-	}
-
-	private String formatLog(StringBuilder s) {
-		StringBuffer response = new StringBuffer();
-		for (int i = 0; i < s.length(); i++) {
-			switch (s.charAt(i)) {
-				case 13:
-					response.append("(cr)");
-					break;
-				case 10:
-					response.append("(lf)");
-					break;
-				case 9:
-					response.append("(tab)");
-					break;
-				default:
-					response.append("(" + (int) s.charAt(i) + ")");
-					break;
-			}
-		}
-		response.append("  Text:[");
-		for (int i = 0; i < s.length(); i++) {
-			switch (s.charAt(i)) {
-				case 13:
-					response.append("(cr)");
-					break;
-				case 10:
-					response.append("(lf)");
-					break;
-				case 9:
-					response.append("(tab)");
-					break;
-				default:
-					response.append(s.charAt(i));
-					break;
-			}
-		}
-		response.append("]");
-		return response.toString();
 	}
 
 	public void ownershipChange(int type) {
@@ -427,168 +344,3 @@ public class CSerialDriver implements SerialPortEventListener {
 
 @SuppressWarnings("serial")
 class ServiceDisconnectedException extends Exception {}
-
-interface StreamLogger {
-	PrintStream getLog();
-	StringBuilder getBuffer();
-	String getLogPrefix();
-	char[] getTerminators();
-}
-
-class LoggingUtils {
-	private static final String THREAD = "${thread}";
-	private static final String STACK = "${stack}";
-	
-	static void log(StreamLogger logger) {
-		StringBuilder buffer = logger.getBuffer();
-		logger.getLog().println(logger.getLogPrefix() + translate(buffer));
-		buffer.delete(0, Integer.MAX_VALUE);
-	}
-	
-	private static String translate(CharSequence s) {
-		return StringEscapeUtils.escapeJava(s.toString());
-	}
-	
-	static boolean isTerminator(StreamLogger logger, int i) {
-		for(char c : logger.getTerminators()) if(c == i) return true;
-		return false;
-	}
-
-	public static String formatLogPrefix(String logPrefix) {
-		String log = logPrefix.replace(THREAD, Thread.currentThread().getName());
-		if(log.contains(STACK)) {
-			log = getLogPrefixWithStack(log);
-		}
-		return log;
-	}
-
-	private static String getLogPrefixWithStack(String logPrefix) {
-		// build stack
-		StringBuilder s = new StringBuilder();
-		for(StackTraceElement trace : Thread.currentThread().getStackTrace()) {
-			if(!trace.getClassName().equals("java.lang.Thread") &&
-					!trace.getClassName().equals("org.smslib.LoggingUtils") &&
-					!trace.getClassName().equals("org.smslib.LoggingInputStream") &&
-					!trace.getClassName().equals("org.smslib.LoggingOutputStream")) {
-				if(s.length() > 0) s.append('>');
-				s.append(trace.getClassName() + "." + trace.getMethodName());
-			}
-		}
-		return logPrefix.replace(STACK, s.toString());
-	}
-}
-
-class LoggingInputStream extends InputStream implements StreamLogger {
-	private InputStream in;
-	private PrintStream log;
-	private StringBuilder buffer = new StringBuilder();
-	private String logPrefix;
-	private char[] terminators;
-
-	public LoggingInputStream(InputStream in, PrintStream log, String logPrefix, char...terminators) {
-		this.in = in;
-		this.log = log;
-		this.logPrefix = logPrefix;
-		this.terminators = terminators;
-	}
-	
-	public char[] getTerminators() {
-		return terminators;
-	}
-	public StringBuilder getBuffer() {
-		return buffer;
-	}
-	public PrintStream getLog() {
-		return log;
-	}
-	public String getLogPrefix() {
-		return LoggingUtils.formatLogPrefix(logPrefix);
-	}
-
-	@Override
-	public synchronized int read() throws IOException {
-		int read = in.read();
-		buffer.append((char) read);
-		if(isTerminator(read)) {
-			LoggingUtils.log(this);
-			buffer.delete(0, Integer.MAX_VALUE);
-		}
-		return read;
-	}
-	
-	@Override
-	public int available() throws IOException {
-		return in.available();
-	}
-	
-	@Override
-	public synchronized void mark(int readlimit) {
-		in.mark(readlimit);
-	}
-	
-	@Override
-	public boolean markSupported() {
-		return in.markSupported();
-	}
-	
-	@Override
-	public synchronized void reset() throws IOException {
-		in.reset();
-	}
-	
-	@Override
-	public long skip(long n) throws IOException {
-		return in.skip(n);
-	}
-	
-	private boolean isTerminator(int i) {
-		return LoggingUtils.isTerminator(this, i);
-	}
-}
-
-class LoggingOutputStream extends OutputStream implements StreamLogger {
-	private OutputStream out;
-	private PrintStream log;
-	private StringBuilder buffer = new StringBuilder();
-	private String logPrefix;
-	private char[] terminators;
-	
-	public LoggingOutputStream(OutputStream out, PrintStream log, String logPrefix, char...terminators) {
-		this.out = out;
-		this.log = log;
-		this.logPrefix = logPrefix;
-		this.terminators = terminators;
-	}
-	
-	public char[] getTerminators() {
-		return terminators;
-	}
-	public StringBuilder getBuffer() {
-		return buffer;
-	}
-	public PrintStream getLog() {
-		return log;
-	}
-	public String getLogPrefix() {
-		return LoggingUtils.formatLogPrefix(logPrefix);
-	}
-
-	@Override
-	public synchronized void write(int c) throws IOException {
-		buffer.append((char) c);
-		if(isTerminator(c)) {
-			LoggingUtils.log(this);
-			buffer.delete(0, Integer.MAX_VALUE);
-		}
-		out.write(c);
-	}
-	
-	@Override
-	public void flush() throws IOException {
-		out.flush();
-	}
-	
-	private boolean isTerminator(int i) {
-		return LoggingUtils.isTerminator(this, i);
-	}
-}
