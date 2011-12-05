@@ -32,13 +32,15 @@ class LoggingUtils {
 	private static String getLogPrefixWithStack(String logPrefix) {
 		// build stack
 		StringBuilder s = new StringBuilder();
-		for(StackTraceElement trace : Thread.currentThread().getStackTrace()) {
+		StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+		for(int i=stackTrace.length-1; i>=0; --i) {
+			StackTraceElement trace = stackTrace[i];
 			if(!trace.getClassName().equals("java.lang.Thread") &&
-					!trace.getClassName().equals("org.smslib.LoggingUtils") &&
-					!trace.getClassName().equals("org.smslib.LoggingInputStream") &&
-					!trace.getClassName().equals("org.smslib.LoggingOutputStream")) {
-				if(s.length() > 0) s.append('>');
-				s.append(trace.getClassName() + "." + trace.getMethodName());
+					!trace.getClassName().startsWith("org.smslib.logging.")) {
+				if(s.length() > 0) {
+					s.append('>');
+				}
+				s.append(trace.getClassName() + "." + trace.getMethodName() + ':' + trace.getLineNumber());
 			}
 		}
 		return logPrefix.replace(STACK, s.toString());

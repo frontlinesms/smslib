@@ -122,6 +122,7 @@ public class CService {
 		}
 
 		protocol = atHandler.getProtocol();
+		if(protocol == null) throw new IllegalStateException("Protocol not set!");
 
 		receiveMode = ReceiveMode.SYNC;
 

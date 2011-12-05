@@ -53,6 +53,7 @@ public class CServiceTest extends BaseTestCase {
 
 		// badly formed responses
 		testGetManufacturer("* N/A *", "\n*!\r");
+		testGetManufacturer("BOOT", "\r\n^BOOT:9767194,0,0,0,20huawei\r\n\r\nOK\r");
 	}
 	
 	/**
