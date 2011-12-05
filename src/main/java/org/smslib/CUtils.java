@@ -21,21 +21,7 @@
 
 package org.smslib;
 
-public class CUtils
-{
-	public static String replace(String text, String symbol, String value)
-	{
-		StringBuilder buffer;
-
-		while (text.indexOf(symbol) >= 0)
-		{
-			buffer = new StringBuilder(text);
-			buffer.replace(text.indexOf(symbol), text.indexOf(symbol) + symbol.length(), value);
-			text = buffer.toString();
-		}
-		return text;
-	}
-
+public class CUtils {
 	/**
 	 * Make the thread sleep; ignore InterruptedExceptions.
 	 * @param millis

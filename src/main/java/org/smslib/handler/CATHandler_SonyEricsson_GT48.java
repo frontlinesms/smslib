@@ -46,7 +46,7 @@ public class CATHandler_SonyEricsson_GT48 extends CATHandler_SonyEricsson
 				while (true)
 				{
 					responseRetries = 0;
-					serialDriver.send(CUtils.replace("AT+CMGS=\"{1}\"\r", "\"{1}\"", "" + size));
+					serialDriver.send("AT+CMGS=" + size + "\r");
 					sleepWithoutInterruption(DELAY_CMGS);
 					while (!serialDriver.dataAvailable())
 					{

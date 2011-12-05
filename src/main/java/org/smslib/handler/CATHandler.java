@@ -132,7 +132,7 @@ public class CATHandler implements ATHandler {
 	}
 
 	public boolean enterPin(String pin) throws IOException {
-		serialDriver.send(CUtils.replace("AT+CPIN=\"{1}\"\r", "{1}", pin));
+		serialDriver.send("AT+CPIN=\"" + pin + "\"\r");
 		sleepWithoutInterruption(DELAY_PIN);
 		if(serialDriver.getResponse().contains("OK")) {
 			sleepWithoutInterruption(DELAY_PIN);
@@ -220,7 +220,7 @@ public class CATHandler implements ATHandler {
 		int errorRetries = 0;
 		while (true) {
 			int responseRetries = 0;
-			serialDriver.send("AT+CMGS=\"" + size + "\"\r");
+			serialDriver.send("AT+CMGS=" + size + "\r");
 			sleepWithoutInterruption(DELAY_CMGS);
 			while (!serialDriver.dataAvailable()) {
 				responseRetries++;
@@ -265,8 +265,7 @@ public class CATHandler implements ATHandler {
 	}
 	
 	private int sendMessage_TEXT(String phone, String text) throws IOException {
-		String cmd1 = CUtils.replace("AT+CMGS=\"{1}\"\r", "{1}", phone);
-		serialDriver.send(cmd1);
+		serialDriver.send("AT+CMGS=\"" + phone + "\"\r");
 		serialDriver.emptyBuffer();
 		serialDriver.send(text);
 		sleepWithoutInterruption(DELAY_CMGS);
@@ -327,7 +326,7 @@ public class CATHandler implements ATHandler {
 
 	public boolean deleteMessage(int memIndex, String memLocation) throws IOException {
 		if (!setMemoryLocation(memLocation)) throw new RuntimeException("CATHandler.deleteMessage() : Memory Location not found!!!");
-		String response = serialSendReceive(CUtils.replace("AT+CMGD={1}", "{1}", "" + memIndex));
+		String response = serialSendReceive("AT+CMGD=" + memIndex);
 		return response.matches("\\s+OK\\s+");
 	}
 

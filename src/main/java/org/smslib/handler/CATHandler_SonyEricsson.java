@@ -69,7 +69,7 @@ public class CATHandler_SonyEricsson extends CATHandler
 				while (true)
 				{
 					responseRetries = 0;
-					serialDriver.send(CUtils.replace("AT+CMGS=\"{1}\"\r", "\"{1}\"", Integer.toString(size)));
+					serialDriver.send("AT+CMGS=" + size + "\r");
 					sleepWithoutInterruption(DELAY_CMGS);
 					while (!serialDriver.dataAvailable())
 					{
