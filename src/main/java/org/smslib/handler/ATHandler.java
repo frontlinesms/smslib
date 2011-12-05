@@ -165,9 +165,11 @@ public interface ATHandler {
 
 	boolean supportsStk();
 	
+	/** TODO please work out what the difference between these 2 inits are AND DOCUMENT THEM */
 	void stkInit() throws SMSLibDeviceException, IOException;
 	
 	StkResponse stkRequest(StkRequest request, String... variables) throws SMSLibDeviceException, IOException;
 
-	void configureModem() throws SMSLibDeviceException, IOException;
+	/** TODO please work out what the difference between these 2 inits are AND DOCUMENT THEM */
+	void stkInit2() throws SMSLibDeviceException, IOException;
 }
