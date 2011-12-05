@@ -212,22 +212,13 @@ public class CSerialDriver implements SerialPortEventListener {
 		while(dataAvailable()) inStream.read();
 	}
 
-	public String readAll() throws IOException {
-		StringBuilder bob = new StringBuilder();
-		int c;
-		while(!stopFlag && (c = inStream.read())!=-1) {
-			bob.append(c);
-		}
-		return bob.toString();
-	}
-
 	public void clearBuffer() throws IOException {
 		CUtils.sleep_ignoreInterrupts(DELAY);
 		clearBufferCheckCMTI();
 	}
 
 	public void send(String s) throws IOException {
-		if (log != null) log.debug("TE: " + escapeJava(new StringBuilder(s).toString()));
+		if (log != null) log.debug("TE: " + escapeJava(s));
 
 		for (int i = 0; i < s.length(); i++) {
 			outStream.write((byte) s.charAt(i));

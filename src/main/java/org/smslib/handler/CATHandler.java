@@ -220,7 +220,7 @@ public class CATHandler implements ATHandler {
 		int errorRetries = 0;
 		while (true) {
 			int responseRetries = 0;
-			serialDriver.send("AT+CMGS=" + '"' + size + '"' + '\r');
+			serialDriver.send("AT+CMGS=\"" + size + "\"\r");
 			sleepWithoutInterruption(DELAY_CMGS);
 			while (!serialDriver.dataAvailable()) {
 				responseRetries++;
@@ -421,7 +421,8 @@ public class CATHandler implements ATHandler {
 	public boolean supportsStk() {
 		return false;
 	}
-	
+
+	/** TODO please work out what the difference between these 2 inits are AND DOCUMENT THEM */
 	public void stkInit() throws SMSLibDeviceException, IOException {
 		if(!supportsStk()) throw new IllegalStateException("Cannot initialise STK if not supported.");
 	}
@@ -430,7 +431,8 @@ public class CATHandler implements ATHandler {
 		throw new NoStkSupportException();
 	}
 
-	public void configureModem() throws SMSLibDeviceException, IOException {
+	/** TODO please work out what the difference between these 2 inits are AND DOCUMENT THEM */
+	public void stkInit2() throws SMSLibDeviceException, IOException {
 		if(!supportsStk()) throw new IllegalStateException("Cannot configure modem.");
 	}
 }

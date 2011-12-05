@@ -53,8 +53,7 @@ public class CNewMsgMonitor {
 		if (state == State.IDLE) {
 			try {
 				wait(timeout);
-			} catch (Exception e) {
-			}
+			} catch (Exception e) {}
 		}
 		State prevState = state;
 		state = State.IDLE;

@@ -75,7 +75,7 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	}
 	
 	@Override
-	public void configureModem() throws SMSLibDeviceException, IOException {
+	public void stkInit2() throws SMSLibDeviceException, IOException {
 		srv.doSynchronized(new SynchronizedWorkflow<Object>() {
 			public Object run() throws IOException {
 				String vlue = "5FFFFFFF7F";
