@@ -135,16 +135,16 @@
 			<version>3.1</version>
 		</dependency>
 
-		<dependency>
-			<groupId>net.frontlinesms.test</groupId>
-			<artifactId>hayescommandset-test</artifactId>
-			<version>0.0.3-releasetest</version>
-		</dependency>
         <dependency>
 			<groupId>net.frontlinesms.core</groupId>
 			<artifactId>frontlinesms-test</artifactId>
 			<version>0.01.02-SNAPSHOT</version>
 			<scope>test</scope>
 	    </dependency>
+		<dependency>
+			<groupId>net.frontlinesms.test</groupId>
+			<artifactId>hayescommandset-test</artifactId>
+			<version>0.0.3-releasetest</version>
+		</dependency>
 	</dependencies>
 </project>

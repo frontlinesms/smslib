@@ -1,13 +1,12 @@
 package org.smslib;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Field;
 
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.log4j.Logger;
+import org.smslib.test.StringInputStream;
 
 import net.frontlinesms.junit.BaseTestCase;
 
@@ -312,30 +311,6 @@ public class CSerialDriverTest extends BaseTestCase {
 //		Class<?> c = CSerialDriver.class;
 //		Field fld = c.getDeclaredField("lastAtCommand");
 //		fld.set(csd, previousAtCommand);
-	}
-}
-
-class StringInputStream extends InputStream {
-	private ByteArrayInputStream in;
-	
-	public void setString(String content) {
-		try {
-			in = new ByteArrayInputStream(content.getBytes("UTF-8"));
-		} catch (UnsupportedEncodingException ex) {
-			throw new RuntimeException("JVM doesn't support UTF???", ex);
-		}
-	}
-
-	@Override
-	public int read() throws IOException {
-		assertStringSet();
-		return in.read();
-	}
-
-	private void assertStringSet() {
-		if(in == null) {
-			throw new RuntimeException("Test not set up property - must set content for input stream.");
-		}
 	}
 }
 

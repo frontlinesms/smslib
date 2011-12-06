@@ -1250,9 +1250,9 @@ public class CService {
 		String response = atHandler.getModel();
 		if (response.contains("ERROR")) return VALUE_NOT_REPORTED;
 		Matcher m1 = Pattern.compile("(?:MODEL=(\\w+))").matcher(response);
-		if(m1.find()) return m1.group(1);
+		if(m1.find()) return m1.group(1).replaceAll("\\s+", "");
 		Matcher m2 = Pattern.compile("[\\w\\.-]+( {1,2}[\\w\\.-]+)*").matcher(response);
-		if(m2.find()) return m2.group();
+		if(m2.find()) return m2.group().replaceAll("\\s+", "");
 		else return VALUE_NOT_REPORTED;
 	}
 

@@ -162,10 +162,10 @@ public class CServiceTest extends BaseTestCase {
 		// well formed responses
 		testGetModel("V635", "\"GSM900\",\"GSM1800\",\"GSM1900\",\"GSM850\",\"MODEL=V635\"");
 		testGetModel("L6", "\"GSM900\",\"GSM1800\",\"GSM1900\",\"MODEL=L6\"");
-		testGetModel("L Series", "\"L Series\"");
+		testGetModel("LSeries", "\"L Series\"");
 		testGetModel("DWM-156", "DWM-156\r\nOK");
 		testGetModel("MTK2", "MTK2");
-		testGetModel("MULTIBAND  900E  1800", "\r\n MULTIBAND  900E  1800 \r\n\r\nOK\r");
+		testGetModel("MULTIBAND900E1800", "\r\n MULTIBAND  900E  1800 \r\n\r\nOK\r");
 		
 		// badly formed responses
 		// seems a bit tricky to come up with an example of this...

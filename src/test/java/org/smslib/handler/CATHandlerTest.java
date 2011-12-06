@@ -48,7 +48,7 @@ public class CATHandlerTest extends BaseTestCase {
 		assertEquals(expectedSmscReferenceNumber, smscRefNumber);
 		
 		// Check the size, PDU and SUB character were sent
-		verify(serialDriver).send("AT+CMGS=" + '"' + size + '"' + '\r');
+		verify(serialDriver).send("AT+CMGS=" + size + '\r');
 		verify(serialDriver).send(pdu);
 		verify(serialDriver).send((char)26);
 	}

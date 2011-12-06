@@ -35,11 +35,13 @@ import org.smslib.stk.StkConfirmationPrompt;
 import org.smslib.stk.StkConfirmationPromptResponse;
 import org.smslib.stk.StkMenu;
 import org.smslib.stk.StkMenuItem;
+import org.smslib.stk.StkParseException;
 import org.smslib.stk.StkRequest;
 import org.smslib.stk.StkResponse;
 import org.smslib.stk.StkValuePrompt;
 
 public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
+	private static final int DELAY_STGR = 500;
 	private static final String VALUE_PROMPT_REGEX = "\\s*\\+STGI: (\\d+,){5}\".*\"(\\s+OK\\s*)?";
 	private static final Pattern CONFIRMATION_PROMPT_REGEX = Pattern.compile("\\s*\\+STGI: \\d+,\".*\",\\d+\\s+OK\\s*", Pattern.DOTALL);
 	public String regexNumberComma = "([\\d])+(,)+";
@@ -63,11 +65,13 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	public void stkInit() throws SMSLibDeviceException, IOException {
 		srv.doSynchronized(new SynchronizedWorkflow<Object>() {
 			public Object run() throws IOException {
-				serialSendReceive("AT+CMEE=1");
-		 		serialSendReceive("AT+STSF=1");
-				String pinResponse = serialSendReceive("AT+CPIN?");
+				String s = serialSendReceive("AT+CMEE=1");
+		 		String t = serialSendReceive("AT+STSF=1");
+		 		
+		 		// FIXME why would the PIN need to be set up here if the connection has already been established previously?
+				String pinResponse = getPinResponse();
 				if(isWaitingForPin(pinResponse)) {
-					serialSendReceive("AT+CPIN="+srv.getSimPin());
+					enterPin(srv.getSimPin());
 				}
 				return null;
 			}
@@ -78,7 +82,7 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	public void stkInit2() throws SMSLibDeviceException, IOException {
 		srv.doSynchronized(new SynchronizedWorkflow<Object>() {
 			public Object run() throws IOException {
-				String vlue = "5FFFFFFF7F";
+				String vlue = "5FFFFFFF7F"; // TODO document what this value is
 				String pinResponse = serialSendReceive("AT+CPIN?");
 				if(isWaitingForPin(pinResponse)) {
 					serialSendReceive("AT+CPIN="+srv.getSimPin());
@@ -94,15 +98,16 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	}
 
 	/** Starts a new STK session if required. */
-	public void stkStartNewSession() throws IOException, SMSLibDeviceException {
+	public void stkStartNewSession() throws IOException, SMSLibDeviceException, StkParseException {
 		String initResponse = serialSendReceive("AT+STGR=99");
 		if (notOk(initResponse)) {
-			if(!initResponse.contains("+CME ERROR: 3")){
+			// CME ERROR: 3 appears not to be problematic
+			if(!initResponse.contains("+CME ERROR: 3")) {
 				throw new SMSLibDeviceException("Unable to start new session: " + initResponse);
 			}
 		} else {
-			String menuId = getMenuId(initResponse);
-			if(menuId.equals("99")) {
+			String menuId = getMenuId(serialDriver.getLastClearedBuffer());
+			if(menuId.equals("99")) { // TODO what is meant to happen in this case??
 			} else if(menuId.equals("6")) {
 				initResponse = serialSendReceive("AT+STGR=99");
 			}
@@ -114,59 +119,65 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 			throws SMSLibDeviceException, IOException {
 		return srv.doSynchronized(new SynchronizedWorkflow<StkResponse>() {
 			public StkResponse run() throws IOException, SMSLibDeviceException {
-				System.out.println("class: " + request.getClass());
-				System.out.println("crct:  " + (request instanceof StkConfirmationPrompt));
-				if(request.equals(StkRequest.GET_ROOT_MENU)) {
-					stkStartNewSession();
-					String initResponse = serialSendReceive("AT+STGI=0");
-					if (notOk(initResponse)){
-						return StkResponse.ERROR;
-					} else {
-						while(initResponse.contains("+STIN")) {
-							try {
-								stkRequest(StkRequest.GET_ROOT_MENU);
-							} catch (SMSLibDeviceException e) {
-								log.warn(e);
-								e.printStackTrace(); // FIXME handle this properly
-							}
-						}
-						return parseMenu(initResponse, "0");
-					}	
-				} else if(request instanceof StkMenuItem) {
-					return doMenuRequest((StkMenuItem) request);
-				} else if(request.equals(StkValuePrompt.REQUEST)) {
-					return handleValuePromptRequest(request, variables);
-				} else /*if(request instanceof StkConfirmationPrompt)*/ {
-					// 1[confirm],1[dunno, but always there],1[optional it seems]
-					String stgrResponse = serialSendReceive("AT+STGR=1,1,1");
-					if(stgrResponse.contains("OK")) {
-						String stgiResponse = serialSendReceive("AT+STGI=" + extractNumber(stgrResponse, 1));
-						if(stgiResponse.contains("OK")){
-							stgiResponse = serialSendReceive("AT+STGI=" + extractNumber(stgiResponse, 1));
-							if(stgiResponse.contains("OK")) {
-								if(stgiResponse.contains("Not sent")){
-									return StkConfirmationPromptResponse.ERROR;
-									//return StkConfirmationPromptResponse.createError(stgrResponse);
-								} else {
-									return StkConfirmationPromptResponse.OK;
+				try {
+					if(request.equals(StkRequest.GET_ROOT_MENU)) {
+						stkStartNewSession();
+						String initResponse = serialSendReceive("AT+STGI=0");
+						if (notOk(initResponse)) {
+							return StkResponse.ERROR;
+						} else {
+							String bufferedResponse = serialDriver.getLastClearedBuffer(); 
+							while(bufferedResponse.contains("+STIN")) { // FIXME how exactly does this ever break out of the loop?
+								try {
+									stkRequest(StkRequest.GET_ROOT_MENU);
+								} catch (SMSLibDeviceException e) {
+									log.warn(e);
+									e.printStackTrace(); // FIXME handle this properly
 								}
 							}
-						} else {
-							return StkConfirmationPromptResponse.createError(stgrResponse);
+							return parseMenu(initResponse, "0");
+						}	
+					} else if(request instanceof StkMenuItem) {
+						return doMenuRequest((StkMenuItem) request);
+					} else if(request.equals(StkValuePrompt.REQUEST)) {
+						return handleValuePromptRequest(request, variables);
+					} else /*if(request instanceof StkConfirmationPrompt)*/ {
+						// 1[confirm],1[dunno, but always there],1[optional it seems]
+						String stgrResponse = serialSendReceive("AT+STGR=1,1,1");
+						if(stgrResponse.contains("OK")) {
+							System.out.println("Buffer content: " + serialDriver.getLastClearedBuffer());
+							String stgiResponse = serialSendReceive("AT+STGI=" + extractNumber(serialDriver.getLastClearedBuffer()));
+							System.out.println("Buffer content: " + serialDriver.getLastClearedBuffer());
+							if(stgiResponse.contains("OK")) {
+								stgiResponse = serialSendReceive("AT+STGI=" + extractNumber(serialDriver.getLastClearedBuffer()));
+								if(stgiResponse.contains("OK")) {
+									if(stgiResponse.contains("Not sent")) {
+										return StkConfirmationPromptResponse.ERROR; // FIXME despite appearances, this is not an instance of StkConfirmationPromptResponse.  Should it be?  Otherwise referencing it in this way is misleading. 
+										//return StkConfirmationPromptResponse.createError(stgrResponse);
+									} else {
+										return StkConfirmationPromptResponse.OK;
+									}
+								}
+							} else {
+								return StkConfirmationPromptResponse.createError(stgrResponse);
+							}
 						}
-					}
-					return StkConfirmationPromptResponse.createError(stgrResponse);
-				} /*else return null;	*/
+						return StkConfirmationPromptResponse.createError(stgrResponse);
+					} /*else return null;	*/
+				} catch(StkParseException ex) {
+					throw new SMSLibDeviceException(ex);
+				}
 			}
 		});
  	}
 
-	private StkResponse handleValuePromptRequest(StkRequest request, String... variables) throws IOException {
+	private StkResponse handleValuePromptRequest(StkRequest request, String... variables) throws IOException, StkParseException {
 		// 3[mode=input],1[not sure],1[this seems to be optional]
-		serialSendReceive("AT+STGR=3,1,1");
+		String response = serialSendReceive("AT+STGR=3,1,1");
 		// Suffix variable with "EOF"/"End of file"/"Ctrl-z"
-		String submitResponse = serialSendReceive(variables[0] + (char)0x1A);
-		String menuId = getMenuId(submitResponse);
+		serialDriver.send(variables[0] + (char)0x1A);
+		sleepWithoutInterruption(DELAY_STGR);
+		String menuId = getMenuId(serialDriver.getLastClearedBuffer());
 		String next = serialSendReceive("AT+STGI=" + menuId);
 		return parseStkResponse(next, menuId);
 	}
@@ -189,19 +200,23 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 		return serialResponse.matches(VALUE_PROMPT_REGEX);
 	}
 
-	private StkResponse doMenuRequest(StkMenuItem request) throws IOException {
+	private StkResponse doMenuRequest(StkMenuItem request) throws IOException, SMSLibDeviceException, StkParseException {
 		String initialResponse = serialSendReceive("AT+STGR=" + request.getMenuId() + ",1," + request.getMenuItemId());
-		String newMenuId = extractNumber(initialResponse, 1);
-		String secondaryResponse = serialSendReceive("AT+STGI=" + newMenuId);
-		return parseStkResponse(secondaryResponse, newMenuId);
+		if(initialResponse.contains("OK")) {
+			String newMenuId = extractNumber(serialDriver.getLastClearedBuffer());
+			String secondaryResponse = serialSendReceive("AT+STGI=" + newMenuId);
+			return parseStkResponse(secondaryResponse, newMenuId);
+		} else throw new SMSLibDeviceException("Unexpected response to AT+STGR: " + initialResponse);
 	}
 
-	/** Extract the nth set of digits from the supplied string */
-	private static String extractNumber(String s, int n) {
-		Pattern p = Pattern.compile("\\d+");
-		Matcher m = p.matcher(s);
-		while(n-- > 0) m.find();
-		return m.group();
+	/** Extract the 1st set of digits from the supplied string. */
+	private static String extractNumber(String s) throws StkParseException {
+		Matcher m = Pattern.compile("\\d+").matcher(s);
+		if(m.find()) {
+			return m.group();
+		} else {
+			throw new StkParseException();
+		}
 	}
 
 	private StkResponse parseMenu(String serialSendReceive, String menuId) {
@@ -232,13 +247,12 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	}
 
 	private List<StkMenuItem> parseMenuItems(String serialSendReceive, String menuId) {
-		System.out.println("parseMenuItems");
 		ArrayList<StkMenuItem> items = new ArrayList<StkMenuItem>();
 		String uncleanTitle = "";
 		String menuItemId = "";
 
 		Matcher matcher = Pattern.compile("\\+STGI: ((([\\d])+,)(([\\d])+,)+)+\\\"([\\w](.)*)+\\\"").matcher(serialSendReceive);
-		while (matcher.find() ){
+		while (matcher.find()) {
 			uncleanTitle = matcher.group();
 			// retrieve menuItemId
 			Matcher matcherMenuItemId = Pattern.compile(regexNumber).matcher(uncleanTitle);
@@ -250,18 +264,18 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 			uncleanTitle = uncleanTitle.replace("\"", "");
 			uncleanTitle = uncleanTitle.replaceAll(regexNumberComma, "");
 
-			System.out.println("parseMenuItems cleanItemMenu:"+ uncleanTitle+"||menuId:"+menuId+"||MenuItemId:"+menuItemId);
 			items.add(new StkMenuItem(uncleanTitle, menuId, menuItemId));
 		}
 		return items;
 	}
 
-	private String getMenuId(String response) {
+	private String getMenuId(String response) throws StkParseException {
 		Matcher matcher = Pattern.compile("\\d+").matcher(response);
-		if (matcher.find()){
+		if (matcher.find()) {
 			return matcher.group();
+		} else {
+			throw new StkParseException();
 		}
-		return null;
 	}
 
 	private boolean notOk(String initResponse) {

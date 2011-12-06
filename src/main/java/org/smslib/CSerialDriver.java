@@ -64,6 +64,7 @@ public class CSerialDriver implements SerialPortEventListener {
 	/** The logger for this driver. */
 	private Logger log;
 	private CService srv;
+	private String lastClearedBuffer = "";
 	
 	public CSerialDriver(String port, int baud, CService srv) {
 		this.port = port;
@@ -82,6 +83,10 @@ public class CSerialDriver implements SerialPortEventListener {
 
 	public int getBaud() {
 		return baud;
+	}
+	
+	public String getLastClearedBuffer() {
+		return lastClearedBuffer;
 	}
 
 	public void setNewMsgMonitor(CNewMsgMonitor monitor) {
@@ -191,19 +196,32 @@ public class CSerialDriver implements SerialPortEventListener {
 	}
 
 	public void clearBufferCheckCMTI() throws IOException {
+		if (log != null) log.debug("SerialDriver(): clearBufferCheckCMTI() called");
+		String bufferContent = readBuffer();
+		lastClearedBuffer = bufferContent;
+		try {
+			throw new RuntimeException("CHECKING STACKTRACE:::");
+		} catch(RuntimeException ex) {
+			ex.printStackTrace();
+		}
+		System.out.println("CMTI read the following from the buffer: " + bufferContent);
+		if (log != null) log.debug("ME(CL): " + escapeJava(bufferContent));
+		if (newMsgMonitor != null && newMsgMonitor.getState() != State.CMTI) {
+			final String txt = bufferContent;
+			newMsgMonitor.raise((txt.indexOf("+CMTI:") >= 0 || txt.indexOf("+CDSI:") >= 0) ? State.CMTI : State.IDLE);
+		}
+	}
+	
+	public String readBuffer() throws IOException {
 		StringBuilder buffer = new StringBuilder(BUFFER_SIZE);
 
-		if (log != null) log.debug("SerialDriver(): clearBufferCheckCMTI() called");
 		while (dataAvailable()) {
 			int c = inStream.read();
 			if (c == -1) break;
 			buffer.append((char) c);
 		}
-		if (log != null) log.debug("ME(CL): " + escapeJava(buffer.toString()));
-		if (newMsgMonitor != null && newMsgMonitor.getState() != State.CMTI) {
-			final String txt = buffer.toString();
-			newMsgMonitor.raise((txt.indexOf("+CMTI:") >= 0 || txt.indexOf("+CDSI:") >= 0) ? State.CMTI : State.IDLE);
-		}
+		
+		return buffer.toString();
 	}
 
 	public void emptyBuffer() throws IOException {
