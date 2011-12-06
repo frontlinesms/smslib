@@ -199,12 +199,6 @@ public class CSerialDriver implements SerialPortEventListener {
 		if (log != null) log.debug("SerialDriver(): clearBufferCheckCMTI() called");
 		String bufferContent = readBuffer();
 		lastClearedBuffer = bufferContent;
-		try {
-			throw new RuntimeException("CHECKING STACKTRACE:::");
-		} catch(RuntimeException ex) {
-			ex.printStackTrace();
-		}
-		System.out.println("CMTI read the following from the buffer: " + bufferContent);
 		if (log != null) log.debug("ME(CL): " + escapeJava(bufferContent));
 		if (newMsgMonitor != null && newMsgMonitor.getState() != State.CMTI) {
 			final String txt = bufferContent;

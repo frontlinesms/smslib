@@ -83,9 +83,9 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 		srv.doSynchronized(new SynchronizedWorkflow<Object>() {
 			public Object run() throws IOException {
 				String vlue = "5FFFFFFF7F"; // TODO document what this value is
-				String pinResponse = serialSendReceive("AT+CPIN?");
+				String pinResponse = getPinResponse();
 				if(isWaitingForPin(pinResponse)) {
-					serialSendReceive("AT+CPIN="+srv.getSimPin());
+					enterPin(srv.getSimPin());
 				}
 				serialSendReceive("AT+STSF=0");
 		 		serialSendReceive("AT+STSF=1");
