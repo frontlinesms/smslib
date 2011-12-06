@@ -15,6 +15,7 @@ import org.smslib.stk.StkConfirmationPrompt;
 import org.smslib.stk.StkConfirmationPromptResponse;
 import org.smslib.stk.StkMenu;
 import org.smslib.stk.StkMenuItem;
+import org.smslib.stk.StkParseException;
 import org.smslib.stk.StkRequest;
 import org.smslib.stk.StkResponse;
 import org.smslib.stk.StkValuePrompt;
@@ -86,7 +87,6 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 		assertNotNull(rootMenu.getRequest("Safaricom+"));
 		assertNotNull(rootMenu.getRequest("M-PESA"));
 	}
-	
 	
 	public void testStkRootMenuRequestWithCmeError() throws SMSLibDeviceException, IOException {
 		// given
@@ -166,7 +166,7 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 				"\r\n+STGI: 0,1,0,20,0,\"Enter phone no.\"\r\n\r\nOK\r\n",
 				"\r\n> \r\nOK\r\n\r\n+STIN: 3\r\n",
 				"\r\n+STGI: 0,1,0,8,0,\"Enter amount\"\r\n\r\nOK\r\n");
-		StkMenuItem enterPhoneNumber = new StkMenuItem("Enter phone no.", "6", "2");
+		StkMenuItem enterPhoneNumber = new StkMenuItem("2", "Enter phone no.", "6");
 		
 		// when we trigger a relevant menu item
 		StkResponse menuItemResponse = h.stkRequest(enterPhoneNumber.getRequest());
@@ -191,7 +191,7 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 				"+STGI: 0,0,0,\"M-PESA\"\n+STGI: 1,7,\"Send money\",0\n+STGI: 2,7,\"Withdraw cash\",0\n+STGI: 3,7,\"Buy airtime\",0\n+STGI: 4,7,\"Pay Bill\",0\n+STGI: 5,7,\"Buy Goods\",0\n+STGI: 6,7,\"ATM Withdrawal\",0\n+STGI: 7,7,\"My account\",0\nOK\n+STIN: 6",
 				"OK\r\n\r\n+STIN: 6\r",
 				"\r\n+STGI: 0,0,0\r\n+STGI: 1,2,\"Search SIM Contacts\",0\r\n+STGI: 2,2,\"Enter phone no.\",0\r\n\r\nOK\r");
-		StkRequest submenuRequest = new StkMenuItem("M-PESA", "0", "1");
+		StkRequest submenuRequest = new StkMenuItem("1", "M-PESA", "0");
 		
 		// when we request a submenu
 		StkResponse submenuResponse = h.stkRequest(submenuRequest);
@@ -251,6 +251,37 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 				"AT+STSF=1",
 				"AT+CPIN?",
 				"AT+CPIN=\"1234\"");
+	}
+	
+	public void testStkParseMenu() throws Exception {
+		// given
+		String response = "\r\n+STGI: 0,0,0,\"M-PESA\"\r\n+STGI: 1,2,\"Wezesha\",0\r\n+STGI: 2,2,\"Activate\",0\r\n\r\nOK\r";
+		
+		// when
+		StkMenu menu = h.parseStkMenu(response, "101");
+		
+		// then
+		assertEquals("M-PESA", menu.getTitle());
+		assertEquals(2, menu.getItemCount());
+		
+		StkMenuItem wezeshaItem = menu.getItems().get(0);
+		assertEquals("Wezesha", wezeshaItem.getText());
+		assertEquals("1", wezeshaItem.getId());
+		
+		StkMenuItem activateItem = menu.getItems().get(1);
+		assertEquals("Activate", activateItem.getText());
+		assertEquals("2", activateItem.getId());
+	}
+	
+	public void testStkParseMenuTitle() throws Exception {
+		// given
+		String response = "\r\n+STGI: 0,0,0,\"M-PESA\"\r\n+STGI: 1,2,\"Wezesha\",0\r\n+STGI: 2,2,\"Activate\",0\r\n\r\nOK\r";
+		
+		// when
+		String title = h.parseStkMenuTitle(response);
+		
+		// then
+		assertEquals("M-PESA", title);
 	}
 
 	/** Verifies that a list of serial commands were sent to the modem in a specific order

@@ -44,8 +44,6 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	private static final int DELAY_STGR = 500;
 	private static final String VALUE_PROMPT_REGEX = "\\s*\\+STGI: (\\d+,){5}\".*\"(\\s+OK\\s*)?";
 	private static final Pattern CONFIRMATION_PROMPT_REGEX = Pattern.compile("\\s*\\+STGI: \\d+,\".*\",\\d+\\s+OK\\s*", Pattern.DOTALL);
-	public String regexNumberComma = "([\\d])+(,)+";
-	public String regexNumber = "([\\d])+";
 	
 	public CATHandler_Wavecom_Stk(CSerialDriver serialDriver, Logger log, CService srv) {
 		super(serialDriver, log, srv);
@@ -78,6 +76,7 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 		});
 	}
 	
+	/** FIXME I cannot work out where this method was called.  Why does it exist? */
 	@Override
 	public void stkInit2() throws SMSLibDeviceException, IOException {
 		srv.doSynchronized(new SynchronizedWorkflow<Object>() {
@@ -135,7 +134,7 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 									e.printStackTrace(); // FIXME handle this properly
 								}
 							}
-							return parseMenu(initResponse, "0");
+							return parseStkMenu(initResponse, "0");
 						}	
 					} else if(request instanceof StkMenuItem) {
 						return doMenuRequest((StkMenuItem) request);
@@ -182,13 +181,13 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 		return parseStkResponse(next, menuId);
 	}
 	
-	private StkResponse parseStkResponse(String serialResponse, String menuId) {
+	private StkResponse parseStkResponse(String serialResponse, String menuId) throws StkParseException {
 		if(isValuePrompt(serialResponse)) {
 			return new StkValuePrompt();
 		} else if(isConfirmationPrompt(serialResponse)) {
 			return new StkConfirmationPrompt();
 		} else {
-			return parseMenu(serialResponse, menuId);
+			return parseStkMenu(serialResponse, menuId);
 		}
 	}
 	
@@ -201,70 +200,52 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	}
 
 	private StkResponse doMenuRequest(StkMenuItem request) throws IOException, SMSLibDeviceException, StkParseException {
-		String initialResponse = serialSendReceive("AT+STGR=" + request.getMenuId() + ",1," + request.getMenuItemId());
+		String initialResponse = serialSendReceive("AT+STGR=" + request.getMenuId() + ",1," + request.getId());
 		if(initialResponse.contains("OK")) {
-			String newMenuId = extractNumber(serialDriver.getLastClearedBuffer());
+			String newMenuId = getStinResponseId();
 			String secondaryResponse = serialSendReceive("AT+STGI=" + newMenuId);
 			return parseStkResponse(secondaryResponse, newMenuId);
 		} else throw new SMSLibDeviceException("Unexpected response to AT+STGR: " + initialResponse);
+	}
+	
+	private String getStinResponseId() throws SMSLibDeviceException, IOException, StkParseException {
+		String stinResponse = serialDriver.getLastClearedBuffer();
+		while(!stinResponse.matches("\\s*\\+STIN: \\d+\\s*")) {
+			stinResponse = serialDriver.readBuffer();
+			if(stinResponse.contains("ERROR")) {
+				throw new SMSLibDeviceException("Error read for STIN response: " + stinResponse);
+			}
+		}
+		return extractNumber(stinResponse);
 	}
 
 	/** Extract the 1st set of digits from the supplied string. */
 	private static String extractNumber(String s) throws StkParseException {
 		Matcher m = Pattern.compile("\\d+").matcher(s);
-		if(m.find()) {
-			return m.group();
-		} else {
-			throw new StkParseException();
-		}
+		if(m.find()) return m.group();
+		else throw new StkParseException();
 	}
 
-	private StkResponse parseMenu(String serialSendReceive, String menuId) {
-		String title = parseMenuTitle(serialSendReceive);
-		List<StkMenuItem> menuItems = parseMenuItems(serialSendReceive, menuId);
+	StkMenu parseStkMenu(String response, String menuId) throws StkParseException {
+		String title = parseStkMenuTitle(response);
+		List<StkMenuItem> menuItems = parseMenuItems(response, menuId);
 		return new StkMenu(title, menuItems.toArray());
 	}
 	
-	 private String parseMenuTitle(String serialSendReceive) {
-		  Matcher matcher = Pattern.compile("\\+STGI: ((([\\d])+,)+)?(\\\"[\\w -.]+\\\")?").matcher(serialSendReceive);
-		  //Test to find out if the string is an inputRequirement
-		  String[] splitSerialSendReceive = serialSendReceive.split("\\+STGI");
-		  if (splitSerialSendReceive.length > 2){
-		   if (matcher.find()){
-		    String uncleanTitle = matcher.group();
-		    uncleanTitle = uncleanTitle.replace("+STGI: ", "");
-		    uncleanTitle = uncleanTitle.replace("\"", "");
-		    uncleanTitle = uncleanTitle.replaceAll(regexNumberComma, "");
-		    return uncleanTitle;
-		   } else {
-		    //TODO
-		    return "ERROR TITLE";
-		   }
-		  }
-		   else {
-		         return "Item"; 
-		  }
+	String parseStkMenuTitle(String response) throws StkParseException {
+		Matcher m = Pattern.compile("\"(.*)\"").matcher(response);
+		if(m.find()) return m.group(1);
+		else throw new StkParseException();
 	}
 
-	private List<StkMenuItem> parseMenuItems(String serialSendReceive, String menuId) {
+	private List<StkMenuItem> parseMenuItems(String response, String menuId) {
 		ArrayList<StkMenuItem> items = new ArrayList<StkMenuItem>();
-		String uncleanTitle = "";
-		String menuItemId = "";
 
-		Matcher matcher = Pattern.compile("\\+STGI: ((([\\d])+,)(([\\d])+,)+)+\\\"([\\w](.)*)+\\\"").matcher(serialSendReceive);
-		while (matcher.find()) {
-			uncleanTitle = matcher.group();
-			// retrieve menuItemId
-			Matcher matcherMenuItemId = Pattern.compile(regexNumber).matcher(uncleanTitle);
-			if (matcherMenuItemId.find() && !matcherMenuItemId.group().equals("0")){
-				menuItemId = matcherMenuItemId.group();
-			}
-			// clean the title
-			uncleanTitle = uncleanTitle.replace("+STGI: ", "");
-			uncleanTitle = uncleanTitle.replace("\"", "");
-			uncleanTitle = uncleanTitle.replaceAll(regexNumberComma, "");
-
-			items.add(new StkMenuItem(uncleanTitle, menuId, menuItemId));
+		Matcher m = Pattern.compile("\\+STGI: (\\d+),\\d+,\"(.*)\",\\d+").matcher(response);
+		while (m.find()) {
+			String id = m.group(1);
+			String title = m.group(2);
+			items.add(new StkMenuItem(id, title, menuId));
 		}
 		return items;
 	}

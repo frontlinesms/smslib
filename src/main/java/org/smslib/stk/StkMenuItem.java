@@ -1,14 +1,16 @@
 package org.smslib.stk;
 
 public class StkMenuItem implements StkRequest {
+	/** ID of this item */
+	private final String id;
 	private final String text;
-	private final String menuId; //MenuId of the menu where the item belongs to
-	private final String menuItemId; //Id of the item itself
+	/** ID of the menu this item belongs to */
+	private final String menuId;
 
-	public StkMenuItem(String text, String menuId, String menuItemId) {
+	public StkMenuItem(String id, String text, String menuId) {
+		this.id = id;
 		this.text = text;
 		this.menuId = menuId;
-		this.menuItemId = menuItemId;
 	}
 
 	public String getText() {
@@ -19,8 +21,8 @@ public class StkMenuItem implements StkRequest {
 		return menuId;
 	}
 
-	public String getMenuItemId() {
-		return menuItemId;
+	public String getId() {
+		return id;
 	}
 
 	public StkRequest getRequest() {

@@ -14,7 +14,7 @@ public class StkMenu implements StkResponse {
 		List<StkMenuItem> tempMenuItems = new ArrayList<StkMenuItem>(menuItems.length);
 		for(Object m : menuItems) {
 			if(m instanceof String) {
-				tempMenuItems.add(new StkMenuItem((String) m,"",""));
+				tempMenuItems.add(new StkMenuItem("", (String) m, ""));
 			} else if(m instanceof StkMenuItem) {
 				tempMenuItems.add((StkMenuItem) m);
 			} else throw new IllegalArgumentException();
@@ -35,7 +35,11 @@ public class StkMenu implements StkResponse {
 		throw new StkMenuItemNotFoundException();
 	}
 	
-	public int getMenuItemCount() {
+	public int getItemCount() {
 		return this.menuItems.size();
+	}
+
+	public List<StkMenuItem> getItems() {
+		return Collections.unmodifiableList(this.menuItems);
 	}
 }

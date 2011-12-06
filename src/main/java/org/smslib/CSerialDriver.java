@@ -42,7 +42,7 @@ import static org.apache.commons.lang3.StringEscapeUtils.escapeJava;
 
 public class CSerialDriver implements SerialPortEventListener {
 	/** Prints to console a selection of full lines read and written to the serial port. */
-	private static final boolean STREAM_LOGGING_ENABLED = false;
+	private static final boolean STREAM_LOGGING_ENABLED = true;
 	private static final int DELAY = 500;
 	private static final int DELAY_AFTER_WRITE = 100;
 	private static final int RECV_TIMEOUT = 30 * 1000;
