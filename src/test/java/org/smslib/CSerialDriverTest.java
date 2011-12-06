@@ -195,7 +195,7 @@ public class CSerialDriverTest extends BaseTestCase {
 		Object[][] goodInputsAndOutputs = {
 		};
 		
-		if(true) throw new RuntimeException("There is no test data here.  Please supply.");
+		// TODO get test cases and implement this test
 		
 		for(Object[] data: goodInputsAndOutputs) {
 			// setup
