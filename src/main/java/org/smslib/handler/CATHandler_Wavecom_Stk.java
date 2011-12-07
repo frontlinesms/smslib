@@ -43,7 +43,6 @@ import org.smslib.stk.StkResponse;
 import org.smslib.stk.StkValuePrompt;
 
 public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
-	private static final int DELAY_STGR = 500;
 	private static final Pattern CONFIRMATION_PROMPT_REGEX = Pattern.compile("^\\s*\\+STGI: \\d+,\".*\",\\d+\\s+OK\\s*$", Pattern.DOTALL);
 	private static final Pattern MENU_REGEX = Pattern.compile(".*\\s+\\+STGI: \\d+,\\d+,\".*\"(,\\d+)*\\s.*", Pattern.DOTALL);
 	/** control-z/EOF character (hex: 0x1a) */
@@ -67,8 +66,8 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	public void stkInit() throws SMSLibDeviceException, IOException {
 		srv.doSynchronized(new SynchronizedWorkflow<Object>() {
 			public Object run() throws IOException {
-				String s = serialSendReceive("AT+CMEE=1");
-		 		String t = serialSendReceive("AT+STSF=1");
+				serialSendReceive("AT+CMEE=1");
+		 		serialSendReceive("AT+STSF=1");
 		 		
 		 		// FIXME why would the PIN need to be set up here if the connection has already been established previously?
 				String pinResponse = getPinResponse();
@@ -124,49 +123,14 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 			public StkResponse run() throws IOException, SMSLibDeviceException {
 				try {
 					if(request.equals(StkRequest.GET_ROOT_MENU)) {
-						stkStartNewSession();
-						String initResponse = serialSendReceive("AT+STGI=0");
-						if (notOk(initResponse)) {
-							return StkResponse.ERROR;
-						} else {
-							String bufferedResponse = serialDriver.getLastClearedBuffer(); 
-							while(bufferedResponse.contains("+STIN")) { // FIXME how exactly does this ever break out of the loop?
-								try {
-									stkRequest(StkRequest.GET_ROOT_MENU);
-								} catch (SMSLibDeviceException e) {
-									log.warn(e);
-									e.printStackTrace(); // FIXME handle this properly
-								}
-							}
-							return parseStkResponse(initResponse, "0");
-						}	
+						return doRootMenuRequest();
 					} else if(request instanceof StkMenuItem) {
 						return doMenuRequest((StkMenuItem) request);
 					} else if(request.equals(StkValuePrompt.REQUEST)) {
-						return handleValuePromptRequest(request, variables);
-					} else /*if(request instanceof StkConfirmationPrompt)*/ {
-						// 1[confirm],1[dunno, but always there],1[optional it seems]
-						String stgrResponse = serialSendReceive("AT+STGR=1,1,1");
-						if(stgrResponse.contains("OK")) {
-							System.out.println("Buffer content: " + serialDriver.getLastClearedBuffer());
-							String stgiResponse = serialSendReceive("AT+STGI=" + extractNumber(serialDriver.getLastClearedBuffer()));
-							System.out.println("Buffer content: " + serialDriver.getLastClearedBuffer());
-							if(stgiResponse.contains("OK")) {
-								stgiResponse = serialSendReceive("AT+STGI=" + extractNumber(serialDriver.getLastClearedBuffer()));
-								if(stgiResponse.contains("OK")) {
-									if(stgiResponse.contains("Not sent")) {
-										return StkConfirmationPromptResponse.ERROR; // FIXME despite appearances, this is not an instance of StkConfirmationPromptResponse.  Should it be?  Otherwise referencing it in this way is misleading. 
-										//return StkConfirmationPromptResponse.createError(stgrResponse);
-									} else {
-										return StkConfirmationPromptResponse.OK;
-									}
-								}
-							} else {
-								return StkConfirmationPromptResponse.createError(stgrResponse);
-							}
-						}
-						return StkConfirmationPromptResponse.createError(stgrResponse);
-					} /*else return null;	*/
+						return doValuePromptRequest(request, variables);
+					} else if(request.equals(StkConfirmationPrompt.REQUEST)) {
+						return doConfirmationRequest();
+					} else throw new IllegalStateException("Do not know how to make STK request: " + request);
 				} catch(StkParseException ex) {
 					throw new SMSLibDeviceException(ex);
 				}
@@ -174,9 +138,9 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 		});
  	}
 
-	private StkResponse handleValuePromptRequest(StkRequest request, String... variables) throws IOException, StkParseException, SMSLibDeviceException {
+	private StkResponse doValuePromptRequest(StkRequest request, String... variables) throws IOException, StkParseException, SMSLibDeviceException {
 		// 3[mode=input],1[not sure],1[this seems to be optional]
-		String response = serialSendReceive("AT+STGR=3,1,1");
+		serialSendReceive("AT+STGR=3,1,1");
 		// Suffix variable with "EOF"/"End of file"/"Ctrl-z"
 		serialDriver.send(variables[0] + CTRL_Z);
 		String menuId = getStinResponseId();
@@ -212,6 +176,47 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 
 	private static boolean isValuePrompt(String serialResponse) {
 		return serialResponse.matches("\\s*\\+STGI: (\\d+,){5}\".*\"(\\s+OK)?\\s*");
+	}
+	
+	private StkResponse doConfirmationRequest() throws IOException, SMSLibDeviceException, StkParseException {
+		// 1[confirm],1[dunno, but always there],1[optional it seems]
+		String stgrResponse = serialSendReceive("AT+STGR=1,1,1");
+		if(stgrResponse.contains("OK")) {
+			String stgiResponse = serialSendReceive("AT+STGI=" + getStinResponseId());
+			if(stgiResponse.contains("OK")) {
+				stgiResponse = serialSendReceive("AT+STGI=" + getStinResponseId());
+				if(stgiResponse.contains("OK")) {
+					if(stgiResponse.contains("Not sent")) {
+						return StkConfirmationPromptResponse.ERROR; // FIXME despite appearances, this is not an instance of StkConfirmationPromptResponse.  Should it be?  Otherwise referencing it in this way is misleading. 
+						//return StkConfirmationPromptResponse.createError(stgrResponse);
+					} else {
+						return StkConfirmationPromptResponse.OK;
+					}
+				}
+			} else {
+				return StkConfirmationPromptResponse.createError(stgrResponse);
+			}
+		}
+		return StkConfirmationPromptResponse.createError(stgrResponse);
+	}
+	
+	private StkResponse doRootMenuRequest() throws StkParseException, IOException, SMSLibDeviceException {
+		stkStartNewSession();
+		String initResponse = serialSendReceive("AT+STGI=0");
+		if (notOk(initResponse)) {
+			return StkResponse.ERROR;
+		} else {
+			String bufferedResponse = serialDriver.getLastClearedBuffer(); 
+			while(bufferedResponse.contains("+STIN")) { // FIXME how exactly does this ever break out of the loop?
+				try {
+					stkRequest(StkRequest.GET_ROOT_MENU);
+				} catch (SMSLibDeviceException e) {
+					log.warn(e);
+					e.printStackTrace(); // FIXME handle this properly
+				}
+			}
+			return parseStkResponse(initResponse, "0");
+		}
 	}
 
 	private StkResponse doMenuRequest(StkMenuItem request) throws IOException, SMSLibDeviceException, StkParseException {
