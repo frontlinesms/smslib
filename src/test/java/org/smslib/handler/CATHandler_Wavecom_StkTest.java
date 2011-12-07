@@ -7,7 +7,6 @@ import org.smslib.CSerialDriver;
 import org.smslib.CService;
 import org.smslib.SMSLibDeviceException;
 import org.smslib.stk.StkConfirmationPrompt;
-import org.smslib.stk.StkConfirmationPromptResponse;
 import org.smslib.stk.StkMenu;
 import org.smslib.stk.StkMenuItem;
 import org.smslib.stk.StkNotification;
@@ -34,6 +33,7 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 		{"+STGI: 1,\"Send money to 0704593656 Ksh50\",1\nOK", "Send money to 0704593656 Ksh50"},
 		{"+STGI: 1,\"Send money to 0704593656\nKsh50\",1\nOK", "Send money to 0704593656\nKsh50"},
 		{"\r\n+STGI: 1,\"Send money to +254725452345\nKsh40000\",1\r\n\rOK\r", "Send money to +254725452345\nKsh40000"},
+		{"\r\n+STGI: 1,\"Confirm selection Brian Blessed 0704135791 ?\",1\r\n\r\nOK\r\n", "Confirm selection Brian Blessed 0704135791 ?"},
 	};
 	private static final String[][] VALID_VALUE_PROMPT_RESPONSES = {
 		{"+STGI: 0,0,4,4,0,\"Enter PIN\"", "Enter PIN"},
@@ -41,6 +41,7 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 		{"+STGI: 0,1,0,20,0,\"Enter phone no.\"\rOK", "Enter phone no."},
 		{"\r\n+STGI: 0,1,0,20,0,\"Enter phone no.\"\r\n\r\nOK\r", "Enter phone no."},
 		{"+STGI: 0,0,4,4,0,\"Enter start key\"\r", "Enter start key"},
+		{"\r\n+STGI: 0,1,0,8,0,\"Enter amount\"\r\n\r\nOK\r\n", "Enter amount"},
 	};
 	private static final String[][] VALID_NOTIFICATION_RESPONSES = {
 		{"\r\n+STGI: \"sending request...\"\r\n\r\nOK\r", "sending request..."},
@@ -191,8 +192,7 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 		// then
 		verifySentToModem("AT+STGR=1,1,1",
 				"AT+STGI=9","AT+STGI=1");
-		assertTrue(confirmationResponse instanceof StkConfirmationPromptResponse);
-		assertTrue(((StkConfirmationPromptResponse) confirmationResponse).isOk());
+		assertTrue(confirmationResponse instanceof StkResponse);
 	}
 	
 	public void testStkValuePrompt() throws SMSLibDeviceException, IOException {

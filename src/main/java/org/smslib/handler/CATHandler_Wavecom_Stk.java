@@ -46,6 +46,9 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	private static final Pattern MENU_REGEX = Pattern.compile(".*\\s+\\+STGI: \\d+,\\d+,\".*\"(,\\d+)*\\s.*", Pattern.DOTALL);
 	/** control-z/EOF character (hex: 0x1a) */
 	private static final char CTRL_Z = 26;
+	/** Arbitrarily-chosen timeout for waiting for STIN response.  Please modify
+	 * and document if you have useful experience with how long this should be. */
+	private static final long STIN_WAIT_TIMEOUT = 5*60*1000;
 	
 	public CATHandler_Wavecom_Stk(CSerialDriver serialDriver, Logger log, CService srv) {
 		super(serialDriver, log, srv);
@@ -180,7 +183,6 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	private StkResponse doConfirmationRequest() throws IOException, SMSLibDeviceException, StkParseException {
 		// 1[confirm],1[dunno, but always there],1[optional it seems]
 		send("AT+STGR=1,1,1");
-		send("AT+STGI=" + getStinResponseId());
 		String stgiResponse = send("AT+STGI=" + getStinResponseId());
 		return parseStkResponse(stgiResponse, "?");
 	}
@@ -220,12 +222,16 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	
 	private String getStinResponseId() throws SMSLibDeviceException, IOException, StkParseException {
 		String stinResponse = serialDriver.getLastClearedBuffer();
+		long timeToDie = System.currentTimeMillis() + STIN_WAIT_TIMEOUT;
 		while(!stinResponse.matches("\\s*\\+STIN: \\d+\\s*")) {
 			stinResponse = serialDriver.readBuffer();
 			if(stinResponse.contains("ERROR")) {
 				throw new SMSLibDeviceException("Error read for STIN response: " + stinResponse);
 			}
 			CUtils.sleep_ignoreInterrupts(200);
+			if(System.currentTimeMillis() > timeToDie) {
+				throw new SMSLibDeviceException("Timeout while waiting for STIN response.");
+			}
 		}
 		return extractNumber(stinResponse);
 	}
