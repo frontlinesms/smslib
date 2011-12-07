@@ -658,7 +658,7 @@ public class CService {
 	 * @throws NullPointerException if the supplied PDU is <code>null</code>.
 	 */
 	private void createMessage(LinkedList<CIncomingMessage> messageList, String pdu, int memoryLocation, int memIndex) throws MessageDecodeException {
-		if (isIncomingMessage(pdu)) {
+		if (TpduUtils.mt_isMtiDeliver(pdu)) {
 			log.info("PDU appears to be an incoming message.  Processing accordingly.");
 			CIncomingMessage msg = new CIncomingMessage(pdu, memIndex, atHandler.getStorageLocations().substring((memoryLocation * 2), (memoryLocation * 2) + 2));
 			// Check if this message is multipart.
@@ -672,12 +672,12 @@ public class CService {
 				log.info("Concatenated message part.  Adding to concat parts list.");
 				addConcatenatedMessagePart(msg);
 			}
-		} else if (isStatusReportMessage(pdu)) {
+		} else if (TpduUtils.mt_isMtiStatusReport(pdu)) {
 			log.info("PDU appears to be a status report.  Processing accordingly.");
 			messageList.add(new CStatusReportMessage(pdu, memIndex, atHandler.getStorageLocations().substring((memoryLocation * 2), (memoryLocation * 2) + 2)));
 			deviceInfo.getStatistics().incTotalIn();
 		} else {
-			log.info("Unrecognized message type; ignoring.");
+			log.warn("Unrecognized message type; ignoring. (PDU:"+pdu+")");
 		}
 	}
 
@@ -1313,34 +1313,6 @@ public class CService {
 	public String getMsisdn() throws IOException {
 	    Matcher m = Pattern.compile("(?:,\"?)(.*?)(?:\"?,)").matcher(atHandler.getMsisdn());
 	    return m.find()? m.group(1): VALUE_NOT_REPORTED;
-	}
-
-	/**
-	 * TODO should implement this properly using constants from {@link TpduUtils}
-	 * @param pdu
-	 * @return
-	 */
-	private boolean isIncomingMessage(String pdu) {
-		int index, i;
-
-		i = Integer.parseInt(pdu.substring(0, 2), 16);
-		index = (i + 1) * 2;
-
-		i = Integer.parseInt(pdu.substring(index, index + 2), 16);
-		return (i & 0x03) == 0;
-	}
-
-	/**
-	 * TODO should implement this properly using constants from {@link TpduUtils}
-	 * @param pdu
-	 * @return
-	 */
-	public static boolean isStatusReportMessage(String pdu) {
-		int i = Integer.parseInt(pdu.substring(0, 2), 16);
-		int index = (i + 1) * 2;
-
-		i = Integer.parseInt(pdu.substring(index, index + 2), 16);
-		return (i & TpduUtils.TP_MTI_MASK) == TpduUtils.TP_MTI_MT_STATUS_REPORT;
 	}
 
 	public boolean received(CIncomingMessage message) {

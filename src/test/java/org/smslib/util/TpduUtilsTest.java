@@ -12,6 +12,7 @@ import java.util.Random;
 import org.smslib.CIncomingMessage;
 import org.smslib.MessageDecodeException;
 import org.smslib.sms.PduInputStream;
+import org.smslib.sms.SmsMessageEncoding;
 
 import net.frontlinesms.junit.BaseTestCase;
 
@@ -31,7 +32,7 @@ public class TpduUtilsTest extends BaseTestCase {
 		"Here is my latest in a long line of very long messages along the line of creating a set of short message service messages that describe a single text message to be sent to myself in order to test my software's messaging capabilities.",
 		"This proposition should not sound great. If you think you're going to save time in the long run by throwing your data into a big bucket now, then sifting through it later.",
 		"And they're clearly inspired by a certain famous fruity phone: witness the positioning round menu button and earpiece slit, note the shiny black faceplate and touch-sensitive screen.",
-		"Most of the HBOS losses are blamed on a Â£7bn write-down at its corporate division, which is heavily exposed to the housing and commercial property sectors. In 2007, HBOS made a profit of Â£5.7bn.",
+		"Most of the HBOS losses are blamed on a £7bn write-down at its corporate division, which is heavily exposed to the housing and commercial property sectors. In 2007, HBOS made a profit of £5.7bn.",
 		"There is a new form available for FrontlineSMS Forms: A very short form",
 		//,
 	};
@@ -67,70 +68,70 @@ public class TpduUtilsTest extends BaseTestCase {
 	
 	/** Test UCS-2 message encoding and decoding using randomly generated strings. */
 	public void testUcs2_generated() throws MessageDecodeException {
-//		// 8 bit messages
-//		Random random = new Random(0);
-//		for (int j = 0; j < 320; j++) {
-//			char[] charz = new char[Math.abs(random.nextInt(180))];
-//			for(int i=0; i<charz.length; ++i) {
-//				charz[i] = (char)random.nextInt();
-//			}
-//			String messageText = new String(charz);
-//			if(log.isTraceEnabled()) log.trace(messageText);
-//			for(short sourcePort : PORTS) {
-//				for(short destinationPort : PORTS) {
-//					for(String recipient : MSISDNS) {
-//						for(int mpRefNo : MP_REF_NO) {
-//							assertEquals("UCS2 codecs do not agree.", messageText, TpduUtils.decodeUcs2Text(TpduUtils.encodeUcs2Text(messageText)));
-//							
-//							String[] pdus = TpduUtils.generatePdus_ucs2(messageText, "", recipient, mpRefNo, sourcePort, destinationPort, true, 0, 0, TpduUtils.getDcsByte(SmsMessageEncoding.UCS2));
-//							
-//							String rebuiltText = "";
-//							for(String pdu : pdus) {
-//								CIncomingMessage message = new CIncomingMessage(convertOutgoingToIncoming(pdu), 0, "");
-//								rebuiltText += message.getText();
-//								assertEquals("", sourcePort, message.getSourcePort());
-//								assertEquals("", destinationPort, message.getDestinationPort());
-//								if(pdus.length > 1) {
-//									// Only check MP REF NO if we have a multipart message.
-//									assertEquals("", mpRefNo, message.getMpRefNo());
-//								}
-//							}
-//							assertEquals("", messageText, rebuiltText);
-//						}
-//					}
-//				}
-//			}
-//		}
+		// 8 bit messages
+		Random random = new Random(0);
+		for (int j = 0; j < 320; j++) {
+			char[] charz = new char[Math.abs(random.nextInt(180))];
+			for(int i=0; i<charz.length; ++i) {
+				charz[i] = (char)random.nextInt();
+			}
+			String messageText = new String(charz);
+			if(log.isTraceEnabled()) log.trace(messageText);
+			for(short sourcePort : PORTS) {
+				for(short destinationPort : PORTS) {
+					for(String recipient : MSISDNS) {
+						for(int mpRefNo : MP_REF_NO) {
+							assertEquals("UCS2 codecs do not agree.", messageText, TpduUtils.decodeUcs2Text(TpduUtils.encodeUcs2Text(messageText)));
+							
+							String[] pdus = TpduUtils.generatePdus_ucs2(messageText, "", recipient, mpRefNo, sourcePort, destinationPort, true, 0, 0, TpduUtils.getDcsByte(SmsMessageEncoding.UCS2));
+							
+							String rebuiltText = "";
+							for(String pdu : pdus) {
+								CIncomingMessage message = new CIncomingMessage(convertOutgoingToIncoming(pdu), 0, "");
+								rebuiltText += message.getText();
+								assertEquals("", sourcePort, message.getSourcePort());
+								assertEquals("", destinationPort, message.getDestinationPort());
+								if(pdus.length > 1) {
+									// Only check MP REF NO if we have a multipart message.
+									assertEquals("", mpRefNo, message.getMpRefNo());
+								}
+							}
+							assertEquals("", messageText, rebuiltText);
+						}
+					}
+				}
+			}
+		}
 	}
 	
 	public void testUcs2_strings() throws MessageDecodeException {
-//		for(String messageText : UCS2_TEXT) {
-//			log.trace("messageText: '"+messageText+"'");
-//			for(short sourcePort : PORTS) {
-//				for(short destinationPort : PORTS) {
-//					for(String recipient : MSISDNS) {
-//						for(int mpRefNo : MP_REF_NO) {
-//							assertEquals("UCS2 codecs do not agree.", messageText, TpduUtils.decodeUcs2Text(TpduUtils.encodeUcs2Text(messageText)));
-//							
-//							String[] pdus = TpduUtils.generatePdus_ucs2(messageText, "", recipient, mpRefNo, sourcePort, destinationPort, true, 0, 0, TpduUtils.getDcsByte(SmsMessageEncoding.UCS2));
-//							
-//							String rebuiltText = "";
-//							for(String pdu : pdus) {
-//								CIncomingMessage message = new CIncomingMessage(convertOutgoingToIncoming(pdu), 0, "");
-//								rebuiltText += message.getText();
-//								assertEquals("", sourcePort, message.getSourcePort());
-//								assertEquals("", destinationPort, message.getDestinationPort());
-//								if(pdus.length > 1) {
-//									// Only check MP REF NO if we have a multipart message.
-//									assertEquals("", mpRefNo, message.getMpRefNo());
-//								}
-//							}
-//							assertEquals("", messageText, rebuiltText);
-//						}
-//					}
-//				}
-//			}
-//		}
+		for(String messageText : UCS2_TEXT) {
+			log.trace("messageText: '"+messageText+"'");
+			for(short sourcePort : PORTS) {
+				for(short destinationPort : PORTS) {
+					for(String recipient : MSISDNS) {
+						for(int mpRefNo : MP_REF_NO) {
+							assertEquals("UCS2 codecs do not agree.", messageText, TpduUtils.decodeUcs2Text(TpduUtils.encodeUcs2Text(messageText)));
+							
+							String[] pdus = TpduUtils.generatePdus_ucs2(messageText, "", recipient, mpRefNo, sourcePort, destinationPort, true, 0, 0, TpduUtils.getDcsByte(SmsMessageEncoding.UCS2));
+							
+							String rebuiltText = "";
+							for(String pdu : pdus) {
+								CIncomingMessage message = new CIncomingMessage(convertOutgoingToIncoming(pdu), 0, "");
+								rebuiltText += message.getText();
+								assertEquals("", sourcePort, message.getSourcePort());
+								assertEquals("", destinationPort, message.getDestinationPort());
+								if(pdus.length > 1) {
+									// Only check MP REF NO if we have a multipart message.
+									assertEquals("", mpRefNo, message.getMpRefNo());
+								}
+							}
+							assertEquals("", messageText, rebuiltText);
+						}
+					}
+				}
+			}
+		}
 	}
 	
 	public void testSplitTextUcs2() {
@@ -211,69 +212,69 @@ public class TpduUtilsTest extends BaseTestCase {
 	
 	
 	public void test8bit() throws MessageDecodeException {
-//		// 8 bit messages
-//		Random random = new Random(0);
-//		for (int j = 0; j < 320; j++) {
-//			byte[] bytes = new byte[Math.abs(random.nextInt(400))];
-//			random.nextBytes(bytes);
-//			for(short sourcePort : PORTS) {
-//				for(short destinationPort : PORTS) {
-//					for(String recipient : MSISDNS) {
-//						for(int mpRefNo : MP_REF_NO) {
-//							String[] pdus = TpduUtils.generatePdus_8bit(bytes, "", recipient, mpRefNo, sourcePort, destinationPort, true, 0, 0, TpduUtils.getDcsByte(SmsMessageEncoding.BINARY_8BIT));
-//							String rebuiltHex = "";
-//							for(String pdu : pdus) {
-//								CIncomingMessage message = new CIncomingMessage(convertOutgoingToIncoming(pdu), 0, "");
-//								rebuiltHex += HexUtils.encode(message.getBinary());
-//								assertEquals("", sourcePort, message.getSourcePort());
-//								assertEquals("", destinationPort, message.getDestinationPort());
-//								if(pdus.length > 1) {
-//									// Only check MP REF NO if we have a multipart message.
-//									assertEquals("", mpRefNo, message.getMpRefNo());
-//								}
-//							}
-//							assertEquals("", bytes, HexUtils.decode(rebuiltHex));
-//						}
-//					}
-//				}
-//			}
-//		}
+		// 8 bit messages
+		Random random = new Random(0);
+		for (int j = 0; j < 320; j++) {
+			byte[] bytes = new byte[Math.abs(random.nextInt(400))];
+			random.nextBytes(bytes);
+			for(short sourcePort : PORTS) {
+				for(short destinationPort : PORTS) {
+					for(String recipient : MSISDNS) {
+						for(int mpRefNo : MP_REF_NO) {
+							String[] pdus = TpduUtils.generatePdus_8bit(bytes, "", recipient, mpRefNo, sourcePort, destinationPort, true, 0, 0, TpduUtils.getDcsByte(SmsMessageEncoding.BINARY_8BIT));
+							String rebuiltHex = "";
+							for(String pdu : pdus) {
+								CIncomingMessage message = new CIncomingMessage(convertOutgoingToIncoming(pdu), 0, "");
+								rebuiltHex += HexUtils.encode(message.getBinary());
+								assertEquals("", sourcePort, message.getSourcePort());
+								assertEquals("", destinationPort, message.getDestinationPort());
+								if(pdus.length > 1) {
+									// Only check MP REF NO if we have a multipart message.
+									assertEquals("", mpRefNo, message.getMpRefNo());
+								}
+							}
+							assertEquals("", bytes, HexUtils.decode(rebuiltHex));
+						}
+					}
+				}
+			}
+		}
 	}
 	
 	public void test7bit() throws MessageDecodeException {
-//		int i = 0;
-//
-//		// 7 bit messages
-//		for(String messageText : TEXTS) {
-//			for(short sourcePort : PORTS) {
-//				for(short destinationPort : PORTS) {
-//					for(String recipient : MSISDNS) {
-//						for(int mpRefNo : MP_REF_NO) {
-//							String[] pdus = TpduUtils.generatePdus_gsm7bit(messageText, "", recipient, mpRefNo, sourcePort, destinationPort, true, -1, 0, TpduUtils.getDcsByte(SmsMessageEncoding.GSM_7BIT));
-//							String rebuiltText = "";
-//							if(log.isTraceEnabled()) {
-//								log.trace("Expected text: " + messageText);
-//								log.trace("Source port: " + sourcePort);
-//								log.trace("Destination port: " + destinationPort);
-//								log.trace("Has UDH: " + (destinationPort!=0||sourcePort!=0||pdus.length>1));
-//							}
-//							for(String pdu : pdus) {
-//								CIncomingMessage message = new CIncomingMessage(convertOutgoingToIncoming(pdu), 0, "");
-//								rebuiltText += message.getText();
-//								assertEquals("", sourcePort, message.getSourcePort());
-//								assertEquals("", destinationPort, message.getDestinationPort());
-//								if(pdus.length > 1) {
-//									// Only check MP REF NO if we have a multipart message.
-//									assertEquals("", mpRefNo, message.getMpRefNo());
-//								}
-//								if(log.isTraceEnabled()) log.trace(++i);
-//							}
-//							assertEquals("", messageText, rebuiltText);
-//						}
-//					}
-//				}
-//			}
-//		}
+		int i = 0;
+
+		// 7 bit messages
+		for(String messageText : TEXTS) {
+			for(short sourcePort : PORTS) {
+				for(short destinationPort : PORTS) {
+					for(String recipient : MSISDNS) {
+						for(int mpRefNo : MP_REF_NO) {
+							String[] pdus = TpduUtils.generatePdus_gsm7bit(messageText, "", recipient, mpRefNo, sourcePort, destinationPort, true, -1, 0, TpduUtils.getDcsByte(SmsMessageEncoding.GSM_7BIT));
+							String rebuiltText = "";
+							if(log.isTraceEnabled()) {
+								log.trace("Expected text: " + messageText);
+								log.trace("Source port: " + sourcePort);
+								log.trace("Destination port: " + destinationPort);
+								log.trace("Has UDH: " + (destinationPort!=0||sourcePort!=0||pdus.length>1));
+							}
+							for(String pdu : pdus) {
+								CIncomingMessage message = new CIncomingMessage(convertOutgoingToIncoming(pdu), 0, "");
+								rebuiltText += message.getText();
+								assertEquals("", sourcePort, message.getSourcePort());
+								assertEquals("", destinationPort, message.getDestinationPort());
+								if(pdus.length > 1) {
+									// Only check MP REF NO if we have a multipart message.
+									assertEquals("", mpRefNo, message.getMpRefNo());
+								}
+								if(log.isTraceEnabled()) log.trace(++i);
+							}
+							assertEquals("", messageText, rebuiltText);
+						}
+					}
+				}
+			}
+		}
 	}
 	
 	/**
@@ -496,6 +497,33 @@ public class TpduUtilsTest extends BaseTestCase {
 		testGetTimezoneDifference(0x18, -15);
 		testGetTimezoneDifference(0x48, -60);
 		testGetTimezoneDifference(0x09, -150);
+	}
+	
+	public void testMt_isStatusReport() {
+		throw new IllegalStateException();
+	}
+	
+	public void testMt_isDeliver() {
+		/** A list of DELIVER pdus without SMSC */
+		final String[] DELIVER_PDUS = {
+				"07917283010010F5040BC87238880900F10000993092516195800AE8329BFD4697D9EC37",
+				"0791448720003023240DD0E474D81C0EBB010000111011315214000BE474D81C0EBB5DE3771B",
+		};
+		for(int i=0; i<DELIVER_PDUS.length; ++i) {
+			String pdu = DELIVER_PDUS[i];
+			assertTrue("PDU: " + i, TpduUtils.mt_isMtiDeliver(pdu));
+		}
+	}
+	
+	public void testMt_isDeliver_not() {
+		/** A list of DELIVER pdus without SMSC */
+		final String[] INVALID_DELIVER_PDUS = {
+				"06000A817020957711112160329051E11121603290512100",
+		};
+		for(int i=0; i<INVALID_DELIVER_PDUS.length; ++i) {
+			String pdu = INVALID_DELIVER_PDUS[i];
+			assertFalse("PDU: " + i, TpduUtils.mt_isMtiDeliver(pdu));
+		}
 	}
 	
 	private void testGetTimezoneDifference(int timezoneOctet, int expectedDifference) {
