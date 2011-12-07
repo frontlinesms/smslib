@@ -259,7 +259,7 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	private List<StkMenuItem> parseMenuItems(String response, String menuId) {
 		ArrayList<StkMenuItem> items = new ArrayList<StkMenuItem>();
 
-		Matcher m = Pattern.compile("\\+STGI: (\\d+),\\d+,\"(.*)\",\\d+").matcher(response);
+		Matcher m = Pattern.compile("\\+STGI: (\\d+),\\d+,\"(.*)\"(:?,\\d+)?").matcher(response);
 		while (m.find()) {
 			String id = m.group(1);
 			String title = m.group(2);

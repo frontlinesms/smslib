@@ -46,13 +46,26 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 	private static final String[][] VALID_NOTIFICATION_RESPONSES = {
 		{"\r\n+STGI: \"sending request...\"\r\n\r\nOK\r", "sending request..."}
 	};
-	private static final String[] VALID_MENU_RESPONSES = {
-		"\r\n+STGI: \"Safaricom\"\r\n+STGI: 1,2,\"Safaricom+\",0,0\r\n+STGI: 128,2,\"M-PESA\",0,21\r\n\r\nOK\r",
-		"\r\n+STGI: 0,0,0,\"Safaricom+\"\r\n+STGI: 1,7,\"Messaging services\",0\r\n+STGI: 2,7,\"Internet & more\",0\r\n+STGI: 3,7,\"Fun\",0\r\n+STGI: 4,7,\"My Account\",0\r\n+STGI: 5,7,\"My services\",0\r\n+STGI: 6,7,\"Info Kiosk\",0\r\n+STGI: 7,7,\"M-Banking Services\",0\r\n\r\nOK\r",
-		"\r\n+STGI: 37,00,12,\"SIM i.TIM\"\r\n+STGI: 37,1,\"SCOPRI SERVIZI\"\r\n+STGI: 37,2,\"MY TIM\"\r\n+STGI: 37,3,\"SCRIPTIM\"\r\n+STGI: 37,4,\"ATTIVA MMS\"\r\n+STGI: 37,5,\"i.box\"\r\n+STGI: 37,6,\"LOSAI DI TIM\"\r\n+STGI: 37,7,\"MilleunaTIM\"\r\n+STGI: 37,8,\"2 IN 1\"\r\n+STGI: 37,9,\"TIMC@FE'\"\r\n+STGI: 37,10,\"TIM PayForMe\"\r\n+STGI: 37,11,\"TIMSPOT\"\r\n+STGI: 37,12,\"RICARICA\"\r\nOK\r",
-		"\r\n+STGI: \"Vodafone Services\"\r\n+STGI: 1,10,\"FLASH!\",0\r\n+STGI: 2,10,\"Info Services\",0\r\n+STGI: 3,10,\"Music\",0\r\nOK\r",
-		"\r\n+STGI: \"Globe Svcs+\"\r\n+STGI: 1,6,\"G-Live\",0\r\n+STGI: 2,6,\"myPhone\",0\r\n+STGI: 3,6,\"Prepaid Svcs\",0\r\n+STGI: 4,6,\"myGlobe\",0\r\n+STGI: 5,6,\"myFavorites\",0\r\n+STGI: 6,6,\"Search\",0\r\n\r\nOK\r",
-		"\r\n+STGI: 0,\"Prepaid Svcs\"\r\n+STGI: 1,7,\"Bal Inquiry\",0\r\n+STGI: 2,7,\"Reload\",0\r\n+STGI: 3,7,\"G-Cash\",0\r\n+STGI: 4,7,\"CallTextSvcs\",0\r\n+STGI: 5,7,\"GPRS Settings\",0\r\n+STGI: 6,7,\"How To's\",0\r\n+STGI: 7,7,\"Call Cust Svc\",0\r\n\r\nOK\r",
+	private static final String[][] VALID_MENU_RESPONSES = {
+		{"\r\n+STGI: \"Safaricom\"\r\n+STGI: 1,2,\"Safaricom+\",0,0\r\n+STGI: 128,2,\"M-PESA\",0,21\r\n\r\nOK\r",
+				"Safaricom",
+						"Safaricom+", "M-PESA"},
+		{"\r\n+STGI: 0,0,0,\"Safaricom+\"\r\n+STGI: 1,7,\"Messaging services\",0\r\n+STGI: 2,7,\"Internet & more\",0\r\n+STGI: 3,7,\"Fun\",0\r\n+STGI: 4,7,\"My Account\",0\r\n+STGI: 5,7,\"My services\",0\r\n+STGI: 6,7,\"Info Kiosk\",0\r\n+STGI: 7,7,\"M-Banking Services\",0\r\n\r\nOK\r",
+				"Safaricom+",
+						"Messaging services", "Internet & more", "Fun", "My Account", "My services", "Info Kiosk", "M-Banking Services"},
+		{"\r\n+STGI: 37,00,12,\"SIM i.TIM\"\r\n+STGI: 37,1,\"SCOPRI SERVIZI\"\r\n+STGI: 37,2,\"MY TIM\"\r\n+STGI: 37,3,\"SCRIPTIM\"\r\n+STGI: 37,4,\"ATTIVA MMS\"\r\n+STGI: 37,5,\"i.box\"\r\n+STGI: 37,6,\"LOSAI DI TIM\"\r\n+STGI: 37,7,\"MilleunaTIM\"\r\n+STGI: 37,8,\"2 IN 1\"\r\n+STGI: 37,9,\"TIMC@FE'\"\r\n+STGI: 37,10,\"TIM PayForMe\"\r\n+STGI: 37,11,\"TIMSPOT\"\r\n+STGI: 37,12,\"RICARICA\"\r\nOK\r",
+				"SIM i.TIM", 
+						"SCOPRI SERVIZI", "MY TIM", "SCRIPTIM", "ATTIVA MMS", "i.box", "LOSAI DI TIM", "MilleunaTIM", "2 IN 1",
+						"TIMC@FE'", "TIM PayForMe", "TIMSPOT", "RICARICA"},
+		{"\r\n+STGI: \"Vodafone Services\"\r\n+STGI: 1,10,\"FLASH!\",0\r\n+STGI: 2,10,\"Info Services\",0\r\n+STGI: 3,10,\"Music\",0\r\nOK\r",
+				"Vodafone Services",
+						"FLASH!", "Info Services", "Music"},
+		{"\r\n+STGI: \"Globe Svcs+\"\r\n+STGI: 1,6,\"G-Live\",0\r\n+STGI: 2,6,\"myPhone\",0\r\n+STGI: 3,6,\"Prepaid Svcs\",0\r\n+STGI: 4,6,\"myGlobe\",0\r\n+STGI: 5,6,\"myFavorites\",0\r\n+STGI: 6,6,\"Search\",0\r\n\r\nOK\r",
+				"Globe Svcs+",
+						"G-Live", "myPhone", "Prepaid Svcs", "myGlobe", "myFavorites", "Search"},
+		{"\r\n+STGI: 0,\"Prepaid Svcs\"\r\n+STGI: 1,7,\"Bal Inquiry\",0\r\n+STGI: 2,7,\"Reload\",0\r\n+STGI: 3,7,\"G-Cash\",0\r\n+STGI: 4,7,\"CallTextSvcs\",0\r\n+STGI: 5,7,\"GPRS Settings\",0\r\n+STGI: 6,7,\"How To's\",0\r\n+STGI: 7,7,\"Call Cust Svc\",0\r\n\r\nOK\r",
+				"Prepaid Svcs",
+						"Bal Inquiry", "Reload", "G-Cash", "CallTextSvcs", "GPRS Settings", "How To's", "Call Cust Svc"},
 	};
 	
 	private CATHandler_Wavecom_Stk h;
@@ -248,10 +261,20 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 	}
 	
 	public void testParseStkResponse_menu() throws Exception {
-		for(String response : VALID_MENU_RESPONSES) {
+		for(int i=0; i<VALID_MENU_RESPONSES.length; ++i) {
+			String[] testCase = VALID_MENU_RESPONSES[i];
+			StkResponse response = h.parseStkResponse(testCase[0], "0");
 			assertInstanceOf("Failed for: " + response,
 					StkMenu.class,
-					h.parseStkResponse(response, "0"));
+					response);
+			StkMenu menu = (StkMenu) response;
+			assertEquals("Menu "+i+" title", testCase[1], menu.getTitle());
+			assertEquals("Menu "+i+" item count", testCase.length-2, menu.getItemCount());
+			for(int j=2; j<testCase.length; ++j) {
+				int menuIndex = j-2;
+				assertEquals("Menu "+i+" item " + menuIndex,
+						testCase[j], menu.getItems().get(menuIndex).getText());
+			}
 		}
 	}
 	
