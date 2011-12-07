@@ -378,7 +378,6 @@ public final class TpduUtils {
 	 * @return An octet to use as the data coding scheme
 	 */
 	public static final int getDcsByte(SmsMessageEncoding encoding) {
-		// FIXME should throw an exception in a public method rather than using assert
 		assert(encoding != SmsMessageEncoding.EncCustom) : "This method should not be used for custom encoding.";
 		int dcs = 0;
 		// Get the bottom 4 bits:

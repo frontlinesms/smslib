@@ -174,14 +174,12 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 		});
  	}
 
-	private StkResponse handleValuePromptRequest(StkRequest request, String... variables) throws IOException, StkParseException {
+	private StkResponse handleValuePromptRequest(StkRequest request, String... variables) throws IOException, StkParseException, SMSLibDeviceException {
 		// 3[mode=input],1[not sure],1[this seems to be optional]
 		String response = serialSendReceive("AT+STGR=3,1,1");
 		// Suffix variable with "EOF"/"End of file"/"Ctrl-z"
 		serialDriver.send(variables[0] + CTRL_Z);
-		sleepWithoutInterruption(DELAY_STGR);
-		String buffered = serialDriver.readBuffer();
-		String menuId = getMenuId(serialDriver.getLastClearedBuffer());
+		String menuId = getStinResponseId();
 		String next = serialSendReceive("AT+STGI=" + menuId);
 		return parseStkResponse(next, menuId);
 	}
