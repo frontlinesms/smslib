@@ -1,7 +1,15 @@
 package org.smslib.stk;
 
 public abstract class StkPrompt implements StkResponse {
-	private String promptText;
+	private final String promptText;
+
+	public StkPrompt() {
+		this("<NOT SET>");
+	}
+	
+	public StkPrompt(String promptText) {
+		this.promptText = promptText;
+	}
 
 	public abstract StkRequest getRequest();
 

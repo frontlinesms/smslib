@@ -1,13 +1,8 @@
 package org.smslib.handler;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
 
 import org.apache.log4j.Logger;
-import org.mockito.InOrder;
 import org.smslib.CSerialDriver;
 import org.smslib.CService;
 import org.smslib.SMSLibDeviceException;
@@ -15,7 +10,6 @@ import org.smslib.stk.StkConfirmationPrompt;
 import org.smslib.stk.StkConfirmationPromptResponse;
 import org.smslib.stk.StkMenu;
 import org.smslib.stk.StkMenuItem;
-import org.smslib.stk.StkParseException;
 import org.smslib.stk.StkRequest;
 import org.smslib.stk.StkResponse;
 import org.smslib.stk.StkValuePrompt;
@@ -45,6 +39,7 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 		"+STGI: 0,1,0,20,0,\"Enter phone no.\"",
 		"+STGI: 0,1,0,20,0,\"Enter phone no.\"\rOK",
 		"\r\n+STGI: 0,1,0,20,0,\"Enter phone no.\"\r\n\r\nOK\r",
+		"+STGI: 0,0,4,4,0,\"Enter start key\"\r"
 	};
 	private CATHandler_Wavecom_Stk h;
 	private CSerialDriver d;
@@ -107,6 +102,43 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 		rootMenu.getRequest("M-PESA");
 	}
 	
+	public void testStkStartNewSessionWithSlowResponse() throws Exception {
+		// given
+		mockModemResponses("\r\nOK\r\n",
+				"\r\n+STIN: 99\r\n");
+
+		// when
+		h.stkStartNewSession();
+		
+		// then
+		verifySentToModem("AT+STGR=99");
+	}
+	
+	public void testStkStartNewSessionWithRetry() throws Exception {
+		// given
+		mockModemResponses("\r\nOK\r\n\r\n+STIN: 6\r\n",
+				"\r\nOK\r\n\r\n+STIN: 99\r\n");
+
+		// when
+		h.stkStartNewSession();
+		
+		// then
+		verifySentToModem("AT+STGR=99", "AT+STGR=99");
+	}
+	
+	public void testStkStartNewSessionWithRetryAndSlowResponse() throws Exception {
+		// given
+		mockModemResponses("\r\nOK\r\n",
+				"\r\n+STIN: 6\r\n",
+				"\r\nOK\r\n\r\n+STIN: 99\r\n");
+
+		// when
+		h.stkStartNewSession();
+		
+		// then
+		verifySentToModem("AT+STGR=99", "AT+STGR=99");
+	}
+	
 	public void testStkConfirmationPrompt() throws SMSLibDeviceException, IOException {
 		// given
 		mockModemResponses("\r\n> \r\nOK\r\n\r\n+STIN: 1\r\n",
@@ -115,7 +147,7 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 				"\r\n+STGI: \"Sending...\"\r\n\r\nOK\r\n\r\n+STIN: 1\r\n",
 				"\r\n+STGI: 1,\"Sent\nWait for M-PESA to reply\",0\r\n\r\nOK\r\n");
 	
-		StkRequest pinEntrySubmitRequest = new StkValuePrompt().getRequest();
+		StkRequest pinEntrySubmitRequest = new StkValuePrompt("Enter PIN.").getRequest();
 		
 		// when the confirmation prompt should be triggered by the previous action
 		StkResponse pinEntryResponse = h.stkRequest(pinEntrySubmitRequest, "1234");
@@ -138,7 +170,7 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 	
 	public void testStkValuePromptRegex_valid() {
 		for(String validPrompt : VALID_VALUE_PROMPTS) {
-			assertTrue(CATHandler_Wavecom_Stk.isValuePrompt(validPrompt));
+			assertTrue("Prompt did not validate: " + validPrompt, CATHandler_Wavecom_Stk.isValuePrompt(validPrompt));
 		}
 	}
 	
@@ -211,7 +243,7 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 	
 	public void testStkErrorRequest() throws SMSLibDeviceException, IOException {
 		// given
-		mockModemResponses();
+		mockModemResponses("\rERROR\r");
 		
 		// when
 		try {

@@ -27,9 +27,11 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.log4j.Logger;
 import org.smslib.CSerialDriver;
 import org.smslib.CService;
+import org.smslib.CUtils;
 import org.smslib.SMSLibDeviceException;
 import org.smslib.stk.StkConfirmationPrompt;
 import org.smslib.stk.StkConfirmationPromptResponse;
@@ -42,7 +44,7 @@ import org.smslib.stk.StkValuePrompt;
 
 public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	private static final int DELAY_STGR = 500;
-	private static final String VALUE_PROMPT_REGEX = "\\s*\\+STGI: (\\d+,){5}\".*\"(\\s+OK\\s*)?";
+	private static final String VALUE_PROMPT_REGEX = "\\s*\\+STGI: (\\d+,){5}\".*\"(\\s+OK)?\\s*";
 	private static final Pattern CONFIRMATION_PROMPT_REGEX = Pattern.compile("\\s*\\+STGI: \\d+,\".*\",\\d+\\s+OK\\s*", Pattern.DOTALL);
 	
 	public CATHandler_Wavecom_Stk(CSerialDriver serialDriver, Logger log, CService srv) {
@@ -105,7 +107,7 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 				throw new SMSLibDeviceException("Unable to start new session: " + initResponse);
 			}
 		} else {
-			String menuId = getMenuId(serialDriver.getLastClearedBuffer());
+			String menuId = getStinResponseId();
 			if(menuId.equals("99")) { // TODO what is meant to happen in this case??
 			} else if(menuId.equals("6")) {
 				initResponse = serialSendReceive("AT+STGR=99");
@@ -183,12 +185,18 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	
 	private StkResponse parseStkResponse(String serialResponse, String menuId) throws StkParseException {
 		if(isValuePrompt(serialResponse)) {
-			return new StkValuePrompt();
+			return parseValuePrompt(serialResponse);
 		} else if(isConfirmationPrompt(serialResponse)) {
 			return new StkConfirmationPrompt();
 		} else {
 			return parseStkMenu(serialResponse, menuId);
 		}
+	}
+	
+	StkValuePrompt parseValuePrompt(String response) throws StkParseException {
+		Matcher m = Pattern.compile("\\s*\\+STGI: (?:\\d+,){5}\"(.*)\"\\s*(?:OK)?\\s*").matcher(response);
+		if(m.find()) return new StkValuePrompt(m.group(1));
+		else throw new StkParseException();
 	}
 	
 	static boolean isConfirmationPrompt(String serialResponse) {
@@ -215,6 +223,7 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 			if(stinResponse.contains("ERROR")) {
 				throw new SMSLibDeviceException("Error read for STIN response: " + stinResponse);
 			}
+			CUtils.sleep_ignoreInterrupts(200);
 		}
 		return extractNumber(stinResponse);
 	}
