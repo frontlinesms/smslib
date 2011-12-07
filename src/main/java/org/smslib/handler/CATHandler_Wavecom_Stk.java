@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.log4j.Logger;
 import org.smslib.CSerialDriver;
 import org.smslib.CService;
@@ -37,6 +36,7 @@ import org.smslib.stk.StkConfirmationPrompt;
 import org.smslib.stk.StkConfirmationPromptResponse;
 import org.smslib.stk.StkMenu;
 import org.smslib.stk.StkMenuItem;
+import org.smslib.stk.StkNotification;
 import org.smslib.stk.StkParseException;
 import org.smslib.stk.StkRequest;
 import org.smslib.stk.StkResponse;
@@ -44,8 +44,10 @@ import org.smslib.stk.StkValuePrompt;
 
 public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	private static final int DELAY_STGR = 500;
-	private static final String VALUE_PROMPT_REGEX = "\\s*\\+STGI: (\\d+,){5}\".*\"(\\s+OK)?\\s*";
-	private static final Pattern CONFIRMATION_PROMPT_REGEX = Pattern.compile("\\s*\\+STGI: \\d+,\".*\",\\d+\\s+OK\\s*", Pattern.DOTALL);
+	private static final Pattern CONFIRMATION_PROMPT_REGEX = Pattern.compile("^\\s*\\+STGI: \\d+,\".*\",\\d+\\s+OK\\s*$", Pattern.DOTALL);
+	private static final Pattern MENU_REGEX = Pattern.compile(".*\\s+\\+STGI: \\d+,\\d+,\".*\"(,\\d+)*\\s.*", Pattern.DOTALL);
+	/** control-z/EOF character (hex: 0x1a) */
+	private static final char CTRL_Z = 26;
 	
 	public CATHandler_Wavecom_Stk(CSerialDriver serialDriver, Logger log, CService srv) {
 		super(serialDriver, log, srv);
@@ -136,7 +138,7 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 									e.printStackTrace(); // FIXME handle this properly
 								}
 							}
-							return parseStkMenu(initResponse, "0");
+							return parseStkResponse(initResponse, "0");
 						}	
 					} else if(request instanceof StkMenuItem) {
 						return doMenuRequest((StkMenuItem) request);
@@ -176,35 +178,42 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 		// 3[mode=input],1[not sure],1[this seems to be optional]
 		String response = serialSendReceive("AT+STGR=3,1,1");
 		// Suffix variable with "EOF"/"End of file"/"Ctrl-z"
-		serialDriver.send(variables[0] + (char)0x1A);
+		serialDriver.send(variables[0] + CTRL_Z);
 		sleepWithoutInterruption(DELAY_STGR);
+		String buffered = serialDriver.readBuffer();
 		String menuId = getMenuId(serialDriver.getLastClearedBuffer());
 		String next = serialSendReceive("AT+STGI=" + menuId);
 		return parseStkResponse(next, menuId);
 	}
 	
-	private StkResponse parseStkResponse(String serialResponse, String menuId) throws StkParseException {
-		if(isValuePrompt(serialResponse)) {
-			return parseValuePrompt(serialResponse);
-		} else if(isConfirmationPrompt(serialResponse)) {
-			return new StkConfirmationPrompt();
-		} else {
+	StkResponse parseStkResponse(String serialResponse, String menuId) throws StkParseException {
+		if(isMenu(serialResponse)) {
 			return parseStkMenu(serialResponse, menuId);
+		} else if(isValuePrompt(serialResponse)) {
+			return new StkValuePrompt(getQuotedText(serialResponse));
+		} else if(isConfirmationPrompt(serialResponse)) {
+			return new StkConfirmationPrompt(getQuotedText(serialResponse));
+		} else {
+			return new StkNotification(getQuotedText(serialResponse));
 		}
 	}
 	
-	StkValuePrompt parseValuePrompt(String response) throws StkParseException {
-		Matcher m = Pattern.compile("\\s*\\+STGI: (?:\\d+,){5}\"(.*)\"\\s*(?:OK)?\\s*").matcher(response);
-		if(m.find()) return new StkValuePrompt(m.group(1));
-		else throw new StkParseException();
+	private String getQuotedText(String response) throws StkParseException {
+		Matcher m = Pattern.compile("\"(.*)\"", Pattern.DOTALL).matcher(response);
+		if(m.find()) return m.group(1);
+		else throw new StkParseException(response);
 	}
 	
-	static boolean isConfirmationPrompt(String serialResponse) {
+	private static boolean isMenu(String serialResponse) {
+		return MENU_REGEX.matcher(serialResponse).matches();
+	}
+	
+	private static boolean isConfirmationPrompt(String serialResponse) {
 		return CONFIRMATION_PROMPT_REGEX.matcher(serialResponse).matches();
 	}
 
-	static boolean isValuePrompt(String serialResponse) {
-		return serialResponse.matches(VALUE_PROMPT_REGEX);
+	private static boolean isValuePrompt(String serialResponse) {
+		return serialResponse.matches("\\s*\\+STGI: (\\d+,){5}\".*\"(\\s+OK)?\\s*");
 	}
 
 	private StkResponse doMenuRequest(StkMenuItem request) throws IOException, SMSLibDeviceException, StkParseException {
@@ -232,7 +241,7 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	private static String extractNumber(String s) throws StkParseException {
 		Matcher m = Pattern.compile("\\d+").matcher(s);
 		if(m.find()) return m.group();
-		else throw new StkParseException();
+		else throw new StkParseException(s);
 	}
 
 	StkMenu parseStkMenu(String response, String menuId) throws StkParseException {
@@ -244,7 +253,7 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	String parseStkMenuTitle(String response) throws StkParseException {
 		Matcher m = Pattern.compile("\"(.*)\"").matcher(response);
 		if(m.find()) return m.group(1);
-		else throw new StkParseException();
+		else throw new StkParseException(response);
 	}
 
 	private List<StkMenuItem> parseMenuItems(String response, String menuId) {
@@ -264,7 +273,7 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 		if (matcher.find()) {
 			return matcher.group();
 		} else {
-			throw new StkParseException();
+			throw new StkParseException(response);
 		}
 	}
 
