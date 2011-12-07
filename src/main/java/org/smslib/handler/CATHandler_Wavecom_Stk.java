@@ -33,7 +33,6 @@ import org.smslib.CService;
 import org.smslib.CUtils;
 import org.smslib.SMSLibDeviceException;
 import org.smslib.stk.StkConfirmationPrompt;
-import org.smslib.stk.StkConfirmationPromptResponse;
 import org.smslib.stk.StkMenu;
 import org.smslib.stk.StkMenuItem;
 import org.smslib.stk.StkNotification;
@@ -180,43 +179,34 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	
 	private StkResponse doConfirmationRequest() throws IOException, SMSLibDeviceException, StkParseException {
 		// 1[confirm],1[dunno, but always there],1[optional it seems]
-		String stgrResponse = serialSendReceive("AT+STGR=1,1,1");
-		if(stgrResponse.contains("OK")) {
-			String stgiResponse = serialSendReceive("AT+STGI=" + getStinResponseId());
-			if(stgiResponse.contains("OK")) {
-				stgiResponse = serialSendReceive("AT+STGI=" + getStinResponseId());
-				if(stgiResponse.contains("OK")) {
-					if(stgiResponse.contains("Not sent")) {
-						return StkConfirmationPromptResponse.ERROR; // FIXME despite appearances, this is not an instance of StkConfirmationPromptResponse.  Should it be?  Otherwise referencing it in this way is misleading. 
-						//return StkConfirmationPromptResponse.createError(stgrResponse);
-					} else {
-						return StkConfirmationPromptResponse.OK;
-					}
-				}
-			} else {
-				return StkConfirmationPromptResponse.createError(stgrResponse);
-			}
+		send("AT+STGR=1,1,1");
+		send("AT+STGI=" + getStinResponseId());
+		String stgiResponse = send("AT+STGI=" + getStinResponseId());
+		return parseStkResponse(stgiResponse, "?");
+	}
+	
+	private String send(String request) throws IOException, SMSLibDeviceException {
+		String response = serialSendReceive(request);
+		if(!response.contains("OK")) {
+			throw new SMSLibDeviceException("Unexpected response from device: " + response);
+		} else {
+			return response;
 		}
-		return StkConfirmationPromptResponse.createError(stgrResponse);
 	}
 	
 	private StkResponse doRootMenuRequest() throws StkParseException, IOException, SMSLibDeviceException {
 		stkStartNewSession();
-		String initResponse = serialSendReceive("AT+STGI=0");
-		if (notOk(initResponse)) {
-			return StkResponse.ERROR;
-		} else {
-			String bufferedResponse = serialDriver.getLastClearedBuffer(); 
-			while(bufferedResponse.contains("+STIN")) { // FIXME how exactly does this ever break out of the loop?
-				try {
-					stkRequest(StkRequest.GET_ROOT_MENU);
-				} catch (SMSLibDeviceException e) {
-					log.warn(e);
-					e.printStackTrace(); // FIXME handle this properly
-				}
+		
+		for(int i=0; i<3; ++i) {
+			try {
+				return parseStkResponse(send("AT+STGI=0"), "0");
+			} catch(StkParseException ex) {
+				// and now, retry
+				System.out.println("Retrying ROOT MENU fetch...");
 			}
-			return parseStkResponse(initResponse, "0");
 		}
+		
+		throw new SMSLibDeviceException("Unable to get root STK menu after multiple attempts.");
 	}
 
 	private StkResponse doMenuRequest(StkMenuItem request) throws IOException, SMSLibDeviceException, StkParseException {
@@ -269,15 +259,6 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 			items.add(new StkMenuItem(id, title, menuId));
 		}
 		return items;
-	}
-
-	private String getMenuId(String response) throws StkParseException {
-		Matcher matcher = Pattern.compile("\\d+").matcher(response);
-		if (matcher.find()) {
-			return matcher.group();
-		} else {
-			throw new StkParseException(response);
-		}
 	}
 
 	private boolean notOk(String initResponse) {

@@ -11,7 +11,6 @@ import org.smslib.stk.StkConfirmationPromptResponse;
 import org.smslib.stk.StkMenu;
 import org.smslib.stk.StkMenuItem;
 import org.smslib.stk.StkNotification;
-import org.smslib.stk.StkParseException;
 import org.smslib.stk.StkRequest;
 import org.smslib.stk.StkResponse;
 import org.smslib.stk.StkValuePrompt;
@@ -44,7 +43,8 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 		{"+STGI: 0,0,4,4,0,\"Enter start key\"\r", "Enter start key"},
 	};
 	private static final String[][] VALID_NOTIFICATION_RESPONSES = {
-		{"\r\n+STGI: \"sending request...\"\r\n\r\nOK\r", "sending request..."}
+		{"\r\n+STGI: \"sending request...\"\r\n\r\nOK\r", "sending request..."},
+		{"\r\n+STGI: 1,\"Sent\nWait for M-PESA to reply\",0\r\n\r\nOK\r\n\r\n+STIN: 99\r\n", "Sent\nWait for M-PESA to reply"},
 	};
 	private static final String[][] VALID_MENU_RESPONSES = {
 		{"\r\n+STGI: \"Safaricom\"\r\n+STGI: 1,2,\"Safaricom+\",0,0\r\n+STGI: 128,2,\"M-PESA\",0,21\r\n\r\nOK\r",

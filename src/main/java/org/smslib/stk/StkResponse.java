@@ -1,5 +1,3 @@
 package org.smslib.stk;
 
-public interface StkResponse {
-	StkResponse ERROR = new StkResponse() {};
-}
+public interface StkResponse {}
