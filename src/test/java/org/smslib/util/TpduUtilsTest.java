@@ -499,10 +499,6 @@ public class TpduUtilsTest extends BaseTestCase {
 		testGetTimezoneDifference(0x09, -150);
 	}
 	
-	public void testMt_isStatusReport() {
-		throw new IllegalStateException();
-	}
-	
 	public void testMt_isDeliver() {
 		/** A list of DELIVER pdus without SMSC */
 		final String[] DELIVER_PDUS = {

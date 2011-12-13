@@ -429,9 +429,4 @@ public class CATHandler implements ATHandler {
 	public StkResponse stkRequest(StkRequest request, String... variables) throws SMSLibDeviceException, IOException {
 		throw new NoStkSupportException();
 	}
-
-	/** TODO please work out what the difference between these 2 inits are AND DOCUMENT THEM */
-	public void stkInit2() throws SMSLibDeviceException, IOException {
-		if(!supportsStk()) throw new IllegalStateException("Cannot configure modem.");
-	}
 }

@@ -190,8 +190,7 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 		StkResponse confirmationResponse = h.stkRequest(((StkConfirmationPrompt) pinEntryResponse).getRequest());
 		
 		// then
-		verifySentToModem("AT+STGR=1,1,1",
-				"AT+STGI=9","AT+STGI=1");
+		verifySentToModem("AT+STGR=1,1,1", "AT+STGI=9");
 		assertTrue(confirmationResponse instanceof StkResponse);
 	}
 	

@@ -81,26 +81,6 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 		});
 	}
 	
-	/** FIXME I cannot work out where this method was called.  Why does it exist? */
-	@Override
-	public void stkInit2() throws SMSLibDeviceException, IOException {
-		srv.doSynchronized(new SynchronizedWorkflow<Object>() {
-			public Object run() throws IOException {
-				String vlue = "5FFFFFFF7F"; // TODO document what this value is
-				String pinResponse = getPinResponse();
-				if(isWaitingForPin(pinResponse)) {
-					enterPin(srv.getSimPin());
-				}
-				serialSendReceive("AT+STSF=0");
-		 		serialSendReceive("AT+STSF=1");
-		 		serialSendReceive("AT+STSF=2,\""+vlue+"\",200,1");
-		 		serialSendReceive("AT+STSF=2,\""+vlue+"\",200,0");
-		 		serialSendReceive("AT+CFUN=1");
-				return null;
-			}
-		});
-	}
-
 	/** Starts a new STK session if required. */
 	public void stkStartNewSession() throws IOException, SMSLibDeviceException, StkParseException {
 		String initResponse = serialSendReceive("AT+STGR=99");
