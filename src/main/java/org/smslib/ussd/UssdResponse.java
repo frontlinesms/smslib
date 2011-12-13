@@ -1,5 +1,3 @@
 package org.smslib.ussd;
 
-public class UssdResponse {
-
-}
+public interface UssdResponse {}

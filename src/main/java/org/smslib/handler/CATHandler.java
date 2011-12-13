@@ -23,6 +23,8 @@ package org.smslib.handler;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.smslib.*;
 import org.smslib.service.MessageClass;
@@ -30,6 +32,10 @@ import org.smslib.service.Protocol;
 import org.smslib.stk.NoStkSupportException;
 import org.smslib.stk.StkRequest;
 import org.smslib.stk.StkResponse;
+import org.smslib.ussd.ActionableUssdResponse;
+import org.smslib.ussd.UssdNotification;
+import org.smslib.ussd.UssdOperationNotSupportedResponse;
+import org.smslib.ussd.UssdParseException;
 import org.smslib.ussd.UssdResponse;
 import org.apache.log4j.*;
 
@@ -61,6 +67,8 @@ public class CATHandler implements ATHandler {
 	private static final String AT_GPRS_STATUS = "AT+CGATT?";
 	/** AT Command to retrieve the battery level */
 	private static final String AT_BATTERY = "AT+CBC";
+	
+	private static final Pattern CUSD_RESPONSE_PATTERN = Pattern.compile("\\s+\\+CUSD: (\\d+)(?:,\"(.*)\", ?\\d+)?\\s+", Pattern.DOTALL);
 
 //> INSTANCE VARIABLES
 	protected CSerialDriver serialDriver;
@@ -449,15 +457,20 @@ public class CATHandler implements ATHandler {
 	}
 	
 	public UssdResponse ussdRequest(final String ussdNumberSequence) throws SMSLibDeviceException, IOException {
+		System.out.println("CATHandler.ussdRequest() : " + ussdNumberSequence);
 		return srv.doSynchronized(new SynchronizedWorkflow<UssdResponse>() {
 			@Override
 			public UssdResponse run() throws SMSLibDeviceException, IOException {
 				initUssd();
 				String response = serialSendReceive("AT+CUSD=1,\"" + ussdNumberSequence + "\",15");
-				if(!response.matches("\\s+OK\\s+")) throw new SMSLibDeviceException("Error getting CUSD response: " + response);
+				System.out.println("Got primary response: " + response);
+				Matcher responseMatcher = Pattern.compile("\\s+(?:\\+CUSD: (\\d+))?\\s+OK\\s+").matcher(response);
+				if(!responseMatcher.find()) throw new SMSLibDeviceException("Error getting CUSD response: " + response);
+				System.out.println("Group 1: " + responseMatcher.group(1));
 				long timeout = System.currentTimeMillis() + 2000;
 				String buffer = serialDriver.getLastClearedBuffer();
-				while(!buffer.matches("\\s*+CUSD: .*\\s*")) {
+				while(!isValidCusdResponse(buffer)) {
+					System.out.println("buffer: " + escapeJava(buffer));
 					if(buffer.contains("ERROR")) {
 						throw new SMSLibDeviceException("Error while waiting for CUSD response: " + escapeJava(buffer));
 					}
@@ -467,15 +480,35 @@ public class CATHandler implements ATHandler {
 					sleepWithoutInterruption(200);
 					buffer = serialDriver.readBuffer();
 				}
-				return parseUssdResponse(buffer);
+				try {
+					return parseUssdResponse(buffer);
+				} catch(UssdParseException ex) {
+					throw new SMSLibDeviceException(ex);
+				}
 			}
 		});
 	}
 	
-	UssdResponse parseUssdResponse(String response) {
+	boolean isValidCusdResponse(String response) {
+		return CUSD_RESPONSE_PATTERN.matcher(response).matches();
+	}
+	
+	UssdResponse parseUssdResponse(String response) throws UssdParseException {
 		System.out.println("==========");
 		System.out.println(escapeJava(response));
 		System.out.println("==========");
-		return null;
+		
+		Matcher m = CUSD_RESPONSE_PATTERN.matcher(response);
+		if(!m.find()) throw new UssdParseException(response);
+		String type = m.group(1);
+		if(type.equals("0") || type.equals("2")) {
+			return new UssdNotification(m.group(2));
+		} else if(type.equals("1")) {
+			return new ActionableUssdResponse(m.group(2));
+		} else if(type.equals("4")) {
+			return new UssdOperationNotSupportedResponse();
+		} else {
+			throw new RuntimeException("Don't know how to handle this: " + response);
+		}
 	}
 }
