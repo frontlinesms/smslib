@@ -204,14 +204,14 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 		String stinResponse = serialDriver.getLastClearedBuffer();
 		long timeToDie = System.currentTimeMillis() + STIN_WAIT_TIMEOUT;
 		while(!stinResponse.matches("\\s*\\+STIN: \\d+\\s*")) {
+			if(stinResponse.contains("ERROR")) {
+				throw new SMSLibDeviceException("Error read for STIN response: " + stinResponse);
+			}
 			if(System.currentTimeMillis() > timeToDie) {
 				throw new SMSLibDeviceException("Timeout while waiting for STIN response.");
 			}
 			CUtils.sleep_ignoreInterrupts(200);
 			stinResponse = serialDriver.readBuffer();
-			if(stinResponse.contains("ERROR")) {
-				throw new SMSLibDeviceException("Error read for STIN response: " + stinResponse);
-			}
 		}
 		return extractNumber(stinResponse);
 	}

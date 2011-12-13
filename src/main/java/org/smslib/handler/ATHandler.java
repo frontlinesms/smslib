@@ -32,6 +32,7 @@ import org.smslib.UnrecognizedHandlerProtocolException;
 
 import org.smslib.stk.StkRequest;
 import org.smslib.stk.StkResponse;
+import org.smslib.ussd.UssdResponse;
 
 public interface ATHandler {
 	public abstract class SynchronizedWorkflow<T> {
@@ -169,4 +170,6 @@ public interface ATHandler {
 	void stkInit() throws SMSLibDeviceException, IOException;
 	
 	StkResponse stkRequest(StkRequest request, String... variables) throws SMSLibDeviceException, IOException;
+	
+	UssdResponse ussdRequest(String request) throws SMSLibDeviceException, IOException;
 }

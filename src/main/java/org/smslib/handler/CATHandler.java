@@ -30,7 +30,10 @@ import org.smslib.service.Protocol;
 import org.smslib.stk.NoStkSupportException;
 import org.smslib.stk.StkRequest;
 import org.smslib.stk.StkResponse;
+import org.smslib.ussd.UssdResponse;
 import org.apache.log4j.*;
+
+import static org.apache.commons.lang3.StringEscapeUtils.escapeJava;
 
 public class CATHandler implements ATHandler {
 	/** The value returned by {@link #sendMessage(int, String, String, String)} instead of a valid
@@ -428,5 +431,51 @@ public class CATHandler implements ATHandler {
 
 	public StkResponse stkRequest(StkRequest request, String... variables) throws SMSLibDeviceException, IOException {
 		throw new NoStkSupportException();
+	}
+	
+	public void initUssd() throws SMSLibDeviceException, IOException {
+		String originalSetting = serialSendReceive("AT+CUSD?");
+		System.out.println("originalSetting: " + escapeJava(originalSetting));
+		if(!originalSetting.matches("\\s+.*\\s+OK\\s+")) {
+			throw new SMSLibDeviceException("Device does not support USSD: " + escapeJava(originalSetting));
+		}
+		if(!originalSetting.matches("\\s+\\+CUSD: 1\\s+OK\\s+")) {
+			String set = serialSendReceive("AT+CUSD=1");
+			System.out.println("set: " + escapeJava(set));
+			if(!set.matches("\\s+OK\\s+")) {
+				throw new SMSLibDeviceException("Could not set USSD to 1: " + escapeJava(set));
+			}
+		}
+	}
+	
+	public UssdResponse ussdRequest(final String ussdNumberSequence) throws SMSLibDeviceException, IOException {
+		return srv.doSynchronized(new SynchronizedWorkflow<UssdResponse>() {
+			@Override
+			public UssdResponse run() throws SMSLibDeviceException, IOException {
+				initUssd();
+				String response = serialSendReceive("AT+CUSD=1,\"" + ussdNumberSequence + "\",15");
+				if(!response.matches("\\s+OK\\s+")) throw new SMSLibDeviceException("Error getting CUSD response: " + response);
+				long timeout = System.currentTimeMillis() + 2000;
+				String buffer = serialDriver.getLastClearedBuffer();
+				while(!buffer.matches("\\s*+CUSD: .*\\s*")) {
+					if(buffer.contains("ERROR")) {
+						throw new SMSLibDeviceException("Error while waiting for CUSD response: " + escapeJava(buffer));
+					}
+					if(System.currentTimeMillis() > timeout) {
+						throw new SMSLibDeviceException("Timeout while waiting for CUSD response.");
+					}
+					sleepWithoutInterruption(200);
+					buffer = serialDriver.readBuffer();
+				}
+				return parseUssdResponse(buffer);
+			}
+		});
+	}
+	
+	UssdResponse parseUssdResponse(String response) {
+		System.out.println("==========");
+		System.out.println(escapeJava(response));
+		System.out.println("==========");
+		return null;
 	}
 }
