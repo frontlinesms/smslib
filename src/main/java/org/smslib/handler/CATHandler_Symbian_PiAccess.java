@@ -13,7 +13,7 @@ import org.smslib.CSerialDriver;
 import org.smslib.CService;
 import org.smslib.SMSLibDeviceException;
 import org.smslib.UnableToReconnectException;
-import org.smslib.CService.MessageClass;
+import org.smslib.service.MessageClass;
 
 /**
  * {@link CATHandler} extension to work around foibles of the Symbian application piAccess.  This

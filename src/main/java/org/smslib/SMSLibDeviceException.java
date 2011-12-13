@@ -35,4 +35,8 @@ public class SMSLibDeviceException extends Exception {
 	public SMSLibDeviceException(String message) {
 		super(message);
 	}
+
+	public SMSLibDeviceException(Exception cause) {
+		super(cause);
+	}
 }

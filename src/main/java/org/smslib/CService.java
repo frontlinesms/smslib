@@ -27,16 +27,20 @@ import java.io.StringReader;
 import java.util.Calendar;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Random;
 import java.util.StringTokenizer;
 import java.util.TimeZone;
 import java.util.TooManyListenersException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import serial.*;
 
 import org.apache.log4j.Logger;
 import org.smslib.handler.ATHandler;
 import org.smslib.handler.CATHandlerUtils;
+import org.smslib.service.*;
 import org.smslib.sms.SmsMessageEncoding;
 import org.smslib.util.GsmAlphabet;
 import org.smslib.util.HexUtils;
@@ -48,54 +52,22 @@ import org.smslib.stk.*;
  * This is the main SMSLib service class.
  */
 public class CService {
-	/** Dummy synchronization object. */
-	private final Object _SYNC_ = new Object();
-
-	/** Holds values representing the modem protocol used. */
-	public enum Protocol {
-		/** PDU protocol. */
-		PDU,
-		/** TEXT protocol. */
-		TEXT;
-	}
-
-	/**
-	 * Holds values representing receive mode.
-	 * 
-	 * @see CService#setReceiveMode(int)
-	 * @see CService#getReceiveMode()
-	 */
-	public static class ReceiveMode {
-		/** Synchronous reading. */
-		public static final int SYNC = 0;
-		/** Asynchronous reading - CMTI indications. */
-		public static final int ASYNC_CNMI = 1;
-		/** Asynchronous reading - polling. */
-		public static final int ASYNC_POLL = 2;
-	}
-
 	private static final int DISCONNECT_TIMEOUT = 10 * 1000;
-
-	private int keepAliveInterval = 30 * 1000;
-
-	private int asyncPollInterval = 10 * 1000;
-
-	private MessageClass asyncRecvClass = MessageClass.ALL;
-
-	private int retriesNoResponse = 5;
-
-	private int delayNoResponse = 5000;
-
-	/** number of times to retry an AT command before giving up when the response is a CMS error */
-	private int retriesCmsErrors = 5;
-
-	private int delayCmsErrors = 5000;
-
-	private final Logger log;
-
 	private static final String VALUE_NOT_REPORTED = "* N/A *";
 	/** {@link TimeZone} for UTC.  This is used to standardise times. */
 	private static final TimeZone TIMEZONE_UTC = TimeZone.getTimeZone("GMT");
+	
+	/** Dummy synchronization object. */
+	private final Object _SYNC_ = new Object();
+	private int keepAliveInterval = 30 * 1000;
+	private int asyncPollInterval = 10 * 1000;
+	private MessageClass asyncRecvClass = MessageClass.ALL;
+	private int retriesNoResponse = 5;
+	private int delayNoResponse = 5000;
+	/** number of times to retry an AT command before giving up when the response is a CMS error */
+	private int retriesCmsErrors = 5;
+	private int delayCmsErrors = 5000;
+	private final Logger log = Logger.getLogger(CService.class);
 	/** The SMSC number for this device.  If set <code>null</code>, a blank value will be used.  This usually allows a device to determine
 	 * the SMSC number for itself. */
 	private String smscNumber;
@@ -105,66 +77,44 @@ public class CService {
 	private String simPin2;
 	/** if <code>true</code>, {@link #connect()} will throw an exception if asked for SIM PIN2 and {@link #simPin2} is null. */
 	boolean throwExceptionOnMissingPin2;
-
-	private int receiveMode;
-
+	private ReceiveMode receiveMode;
 	private Protocol protocol;
-
 	private ATHandler atHandler;
-
-	private CNewMsgMonitor newMsgMonitor;
-
+	private final CNewMsgMonitor newMsgMonitor = new CNewMsgMonitor();
 	public CSerialDriver serialDriver;
-
 	private volatile boolean connected;
-
-	private final CDeviceInfo deviceInfo;
-
+	private final CDeviceInfo deviceInfo = new CDeviceInfo();
 	private CKeepAliveThread keepAliveThread;
-
 	private CReceiveThread receiveThread;
-
 	private ISmsMessageListener messageHandler;
-
 	private ICallListener callHandler;
-
 	private int outMpRefNo;
-
 	/** List of incomplete multipart message parts. */
 	private final LinkedList<LinkedList<CIncomingMessage>> mpMsgList = new LinkedList<LinkedList<CIncomingMessage>>();
 
 	/** Constructor used for Unit Tests. */
 	CService(ATHandler atHanndler) {
-		log = Logger.getLogger(CService.class);
 		this.atHandler = atHanndler;
-		this.deviceInfo = new CDeviceInfo();
 	}
-	
+
 	/**
 	 * CService constructor.
-	 * 
-	 * @param port
-	 *            The comm port to use (i.e. COM1, /dev/ttyS1 etc).
-	 * @param baud
-	 *            The baud rate. 57600 is a good number to start with.
-	 * @param gsmDeviceManufacturer
-	 *            The manufacturer of the modem (i.e. Wavecom, Nokia, Siemens, etc).
-	 * @param gsmDeviceModel
-	 *            The model (i.e. M1306B, 6310i, etc).
+	 * @param port The comm port to use (i.e. COM1, /dev/ttyS1 etc).
+	 * @param baud The baud rate. 57600 is a good number to start with.
+	 * @param gsmDeviceManufacturer The manufacturer of the modem (i.e. Wavecom, Nokia, Siemens, etc).
+	 * @param gsmDeviceModel The model (i.e. M1306B, 6310i, etc).
 	 * @param catHandlerAlias TODO
 	 */
 	public CService(String port, int baud, String gsmDeviceManufacturer, String gsmDeviceModel, String catHandlerAlias) {
 		smscNumber = "";
 
 		serialDriver = new CSerialDriver(port, baud, this);
-		deviceInfo = new CDeviceInfo();
-		newMsgMonitor = new CNewMsgMonitor();
 
-		log = Logger.getLogger(CService.class);
 		log.info("Using port: " + port + " @ " + baud + " baud.");
-		
+
 		try {
-			atHandler = CATHandlerUtils.load(serialDriver, log, this, gsmDeviceManufacturer, gsmDeviceModel, catHandlerAlias);
+			atHandler = CATHandlerUtils.load(serialDriver, log, this,
+					gsmDeviceManufacturer, gsmDeviceModel, catHandlerAlias);
 			log.info("Using " + atHandler.getClass().getName());
 		} catch (Exception ex) {
 			log.fatal("CANNOT INITIALIZE HANDLER (" + ex.getMessage() + ")");
@@ -172,7 +122,8 @@ public class CService {
 		}
 
 		protocol = atHandler.getProtocol();
-		
+		if(protocol == null) throw new IllegalStateException("Protocol not set!");
+
 		receiveMode = ReceiveMode.SYNC;
 
 		outMpRefNo = Math.abs(new Random().nextInt(65536));
@@ -228,7 +179,7 @@ public class CService {
 	 *            The SIM pin code.
 	 * @see CService#getSimPin()
 	 */
-	public void setSimPin(String simPin) 	{
+	public void setSimPin(String simPin) {
 		this.simPin = simPin;
 	}
 
@@ -436,7 +387,7 @@ public class CService {
 	 *            The receive mode.
 	 * @see CService.ReceiveMode
 	 */
-	public void setReceiveMode(int receiveMode) throws IOException {
+	public void setReceiveMode(ReceiveMode receiveMode) throws IOException {
 		synchronized (_SYNC_) {
 			this.receiveMode = receiveMode;
 			if (connected) {
@@ -459,7 +410,7 @@ public class CService {
 	 * @return The Receive Mode.
 	 * @see CService.ReceiveMode
 	 */
-	public int getReceiveMode() {
+	public ReceiveMode getReceiveMode() {
 		return receiveMode;
 	}
 
@@ -469,7 +420,7 @@ public class CService {
 	 * CService object and before connecting. Otherwise, you will get an exception.
 	 * @param protocol The protocol to be used.
 	 */
-	public void setProtocol(CService.Protocol protocol) {
+	public void setProtocol(Protocol protocol) {
 		if (isConnected()) throw new RuntimeException("Cannot change protocol while connected!");
 		else this.protocol = protocol;
 	}
@@ -478,7 +429,7 @@ public class CService {
 	 * Returns the message protocol in use by this.
 	 * @return The protocol use.
 	 */
-	public CService.Protocol getProtocol() {
+	public Protocol getProtocol() {
 		return protocol;
 	}
 
@@ -507,9 +458,6 @@ public class CService {
 	 * 
 	 * @see #disconnect()
 	 */
-	// TODO this now throws a lot more exceptions!  The JAVADOC needs updating to reflect this.  Also, it would be wise
-	// to check that throwing this many different exceptions from one method is actually reasonable behaviour -  It seems
-	// logical, but also looks ridiculous.
 	public void connect() throws SMSLibDeviceException, IOException, TooManyListenersException, PortInUseException, NoSuchPortException, DebugException, UnsupportedCommOperationException {
 		synchronized (_SYNC_) {
 			if (isConnected()) throw new AlreadyConnectedException();
@@ -521,13 +469,13 @@ public class CService {
 				atHandler.reset();
 				serialDriver.setNewMsgMonitor(newMsgMonitor);
 				if (atHandler.isAlive()) {
-					
+
 					// check if the device is asking for PIN or PUK
 					String pinResponse = atHandler.getPinResponse();
 					if(atHandler.isWaitingForPin(pinResponse)) {
 						if (getSimPin() == null) throw new NoPinException();
 						if (!atHandler.enterPin(getSimPin())) throw new InvalidPinException();
-						
+
 						pinResponse = atHandler.getPinResponse();
 					}
 
@@ -544,13 +492,13 @@ public class CService {
 
 						pinResponse = atHandler.getPinResponse();
 					}
-					
+
 					if(atHandler.isWaitingForPuk(pinResponse)) {
 						// TODO is there a more suitable exception?  If not, one should be created, as we ultimately want to catch this and allow the user to enter the PUK
 						// FIXME or is it PUK2?
 						throw new SMSLibDeviceException("PUK Required!");
 					}
-					
+
 					atHandler.init();
 					atHandler.echoOff();
 					waitForNetworkRegistration();
@@ -632,11 +580,11 @@ public class CService {
 		while (timeout > 0 &&
 				((receiveThread!=null && !receiveThread.isStopped()) ||
 						(keepAliveThread!=null && !keepAliveThread.isStopped()))) {
-			timeout -= sleep_ignoreInterrupts(wait);
+			timeout -= CUtils.sleep_ignoreInterrupts(wait);
 		}
 
 		if(serialDriver!=null) serialDriver.killMe();
-		
+
 		// If the receive thread did not die before the timeout above, we should
 		// send it a "join" to kill it off.
 		if(receiveThread!=null && !receiveThread.isStopped()) {
@@ -644,14 +592,12 @@ public class CService {
 			try { receiveThread.join(); } catch(InterruptedException ex) {}
 		}
 
-		
 		// If the keepAlive thread did not die before the timeout above, we
 		// should send it a "join" to kill it off.
 		if(keepAliveThread!=null && !keepAliveThread.isStopped()) {
 			keepAliveThread.interrupt();
 			// We no longer join() on the keepAliveThread, as this has a tendency to block
 			// indefinitely if the device has been disconnected unexpectedly.
-			//try { keepAliveThread.join(); } catch(InterruptedException ex) {}
 		}
 
 		receiveThread = null;
@@ -683,11 +629,11 @@ public class CService {
 				break;
 		}
 	}
-	
+
 	/**
 	 * Gets the next line from this {@link BufferedReader} which contains information.  This
 	 * either comes in the form of an End-of-Buffer, signified by <code>null</code>, or a line
-	 * who's trimmed form has a positive length.
+	 * whose trimmed form has a positive length.
 	 * @param reader Buffered reader from which to read lines.
 	 * @return A string of length 1 or more, or <code>null</code>.
 	 * @throws IOException 
@@ -696,11 +642,11 @@ public class CService {
 		String line;
 		while((line = reader.readLine()) != null
 				&& (line = line.trim()).length() == 0) {
-			/* Keep reading until we find a line containing info, or get to the end of the reader. */
+			// Keep reading until we find a line containing info, or get to the end of the reader.
 		}
 		return line;
 	}
-	
+
 	/**
 	 * Attempts to create a new message from a PDU, memoryLocation and memoryIndex.  If the message
 	 * can be created, it is added to the supplied list of messages.
@@ -712,7 +658,7 @@ public class CService {
 	 * @throws NullPointerException if the supplied PDU is <code>null</code>.
 	 */
 	private void createMessage(LinkedList<CIncomingMessage> messageList, String pdu, int memoryLocation, int memIndex) throws MessageDecodeException {
-		if (isIncomingMessage(pdu)) {
+		if (TpduUtils.mt_isMtiDeliver(pdu)) {
 			log.info("PDU appears to be an incoming message.  Processing accordingly.");
 			CIncomingMessage msg = new CIncomingMessage(pdu, memIndex, atHandler.getStorageLocations().substring((memoryLocation * 2), (memoryLocation * 2) + 2));
 			// Check if this message is multipart.
@@ -726,17 +672,16 @@ public class CService {
 				log.info("Concatenated message part.  Adding to concat parts list.");
 				addConcatenatedMessagePart(msg);
 			}
-		} else if (isStatusReportMessage(pdu)) {
+		} else if (TpduUtils.mt_isMtiStatusReport(pdu)) {
 			log.info("PDU appears to be a status report.  Processing accordingly.");
 			messageList.add(new CStatusReportMessage(pdu, memIndex, atHandler.getStorageLocations().substring((memoryLocation * 2), (memoryLocation * 2) + 2)));
 			deviceInfo.getStatistics().incTotalIn();
 		} else {
-			log.info("Unrecognized message type; ignoring.");
+			log.warn("Unrecognized message type; ignoring. (PDU:"+pdu+")");
 		}
 	}
 
-	private void readMessages_PDU(LinkedList<CIncomingMessage> messageList, MessageClass messageClass) throws IOException, SMSLibDeviceException
-	{
+	private void readMessages_PDU(LinkedList<CIncomingMessage> messageList, MessageClass messageClass) throws IOException, SMSLibDeviceException {
 		synchronized (_SYNC_) {
 			if (!isConnected()) {
 				throw new NotConnectedException();
@@ -756,10 +701,9 @@ public class CService {
 							// null line, or a line reading "OK".
 							while ((line = getNextUsefulLine(reader)) != null
 									&& !line.equalsIgnoreCase("OK")) {
-								
 								// The first line appears to contain the memory location of this message, so extract it
 								int memIndex = getMemIndex(line);
-								
+
 								// The second line should contain the PDU
 								String pdu = getNextUsefulLine(reader);
 								if(pdu == null) {
@@ -774,7 +718,7 @@ public class CService {
 								}
 							}
 						} finally {
-							/// In ALL cases, we should close the reader.
+							// In ALL cases, we should close the reader.
 							if(reader != null) reader.close();
 						}
 					}
@@ -784,7 +728,7 @@ public class CService {
 		// Check to see if we've completed any multipart messages.
 		checkMpMsgList(messageList);
 	}
-	
+
 	/**
 	 * Adds a concatenated message part to the internal list of concatenated messages.  If
 	 * other parts of this message already exist, we will add this message to those ones.
@@ -799,8 +743,8 @@ public class CService {
 		// to any other parts we already have, we just add it to our parts list.
 		for (int k = 0; k < mpMsgList.size(); k++) {
 			LinkedList<CIncomingMessage> tmpList = mpMsgList.get(k);
-			CIncomingMessage listMsg =  tmpList.get(0);
-			
+			CIncomingMessage listMsg = tmpList.get(0);
+
 			// We can tell if a message is part of another message by checking the reference number
 			// and the sender number are the same.
 			if (listMsg.getMpRefNo() == messagePart.getMpRefNo()
@@ -826,7 +770,7 @@ public class CService {
 		tmpList.add(messagePart);
 		mpMsgList.add(tmpList);
 	}
-	
+
 	/**
 	 * Gets the memory index of a message from the relevant line of message list response.
 	 * TODO show an example line
@@ -839,8 +783,7 @@ public class CService {
 		return Integer.parseInt(responseLine.substring(i + 1, j).trim());
 	}
 
-	private void readMessages_TEXT(LinkedList<CIncomingMessage> messageList, MessageClass messageClass) throws IOException, SMSLibDeviceException
-	{
+	private void readMessages_TEXT(LinkedList<CIncomingMessage> messageList, MessageClass messageClass) throws IOException, SMSLibDeviceException {
 		int i, j, memIndex;
 		byte[] bytes;
 		String response, line, msgText, originator, dateStr, refNo;
@@ -875,7 +818,7 @@ public class CService {
 							if (Character.isDigit(tokens.nextToken().trim().charAt(0))) {
 								Calendar cal1 = Calendar.getInstance(TIMEZONE_UTC);
 								Calendar cal2 = Calendar.getInstance(TIMEZONE_UTC);
-								
+
 								line = line.replaceAll(",,", ", ,");
 								tokens = new StringTokenizer(line, ",");
 								tokens.nextToken();
@@ -906,7 +849,7 @@ public class CService {
 								deviceInfo.getStatistics().incTotalIn();
 							} else {
 								Calendar cal1 = Calendar.getInstance(TIMEZONE_UTC);
-								
+
 								line = line.replaceAll(",,", ", ,");
 								tokens = new StringTokenizer(line, ",");
 								tokens.nextToken();
@@ -922,22 +865,21 @@ public class CService {
 								cal1.set(Calendar.MINUTE, Integer.parseInt(dateStr.substring(3, 5)));
 								cal1.set(Calendar.SECOND, Integer.parseInt(dateStr.substring(6, 8)));
 								msgText = reader.readLine().trim();
-								
+
 								// FIXME according to bjdw, "only need to convert if the modem is in hex mode, not gsm mode."  however, we only get here in TEXT mode (rather than PDU mode), so it's hard to say what's meant by that comment
 								if(true) {
 									bytes = new byte[msgText.length() / 2];
 									j = 0;
-									for (i = 0; i < msgText.length(); i += 2)
-									{
+									for (i = 0; i < msgText.length(); i += 2) {
 										bytes[j] = Byte.parseByte(msgText.substring(i, i + 2), 16);
 										j++;
 									}
 									msgText = GsmAlphabet.bytesToString(bytes);
 									// TODO could replace this whole block with:
-									//	msgText = GsmAlphabet.bytesToString(HexUtils.decode(msgText));
+									//      msgText = GsmAlphabet.bytesToString(HexUtils.decode(msgText));
 									// N.B. should confirm that is exactly what it's doing before replacing!
 								}
-								
+
 								msg = new CIncomingMessage(cal1.getTimeInMillis(), originator, msgText, memIndex, atHandler.getStorageLocations().substring((ml * 2), (ml * 2) + 2));
 								log.debug("IN-DTLS: MI:" + msg.getMemIndex());
 								messageList.add(msg);
@@ -967,13 +909,13 @@ public class CService {
 		for (int k = 0; k < mpMsgList.size(); k++) {
 			LinkedList<CIncomingMessage> tmpList = mpMsgList.get(k);
 			log.debug("CheckMpMsgList(): SUBLIST[" + k + "]: " + tmpList.size());
-			CIncomingMessage listMsg =  tmpList.get(0);
+			CIncomingMessage listMsg = tmpList.get(0);
 			boolean found = false;
 			if (listMsg.getMpMaxNo() == tmpList.size()) {
 				found = true;
 				for (int l = 0; l < tmpList.size(); l++) {
 					for (int m = 0; m < tmpList.size(); m++) {
-						listMsg =  tmpList.get(m);
+						listMsg = tmpList.get(m);
 						if (listMsg.getMpSeqNo() == (l + 1)) {
 							if (listMsg.getMpSeqNo() == 1) {
 								mpMsg = listMsg;
@@ -982,8 +924,7 @@ public class CService {
 								// TODO not quite sure what is happening here, but this doesn't seem the ideal way to
 								// build multipart messages...
 								// TODO Does this properly handle multipart messages whose parts are received in the wrong order?
-								if (mpMsg != null)
-								{
+								if (mpMsg != null) {
 									if (mpMsg.getMessageEncoding() == SmsMessageEncoding.GSM_7BIT || mpMsg.getMessageEncoding() == SmsMessageEncoding.UCS2) {
 										mpMsg.setText(mpMsg.getText() + listMsg.getText());
 									} else {
@@ -1023,10 +964,8 @@ public class CService {
 	 * <p>
 	 * This method actually wraps the message in a list and calls #sendMessage(List) that does the job.
 	 * 
-	 * @param message
-	 *            The message to be sent.
-	 * @throws NotConnectedException
-	 *             Either connect() is not called or modem has been disconnected.
+	 * @param message The message to be sent.
+	 * @throws NotConnectedException Either connect() is not called or modem has been disconnected.
 	 * @see CService#sendMessage(LinkedList)
 	 */
 
@@ -1048,10 +987,8 @@ public class CService {
 	 * <p>
 	 * Upon succesful sending, each COutgoingMessage object should have its RefNo and DispatchDate fields set to specific values. Upon failure, the RefNo will be set to 0 and DispatchDate set to null.
 	 * 
-	 * @param messageList
-	 *            A list of COutgoingMessage objects presenting messages that will be sent out.
-	 * @throws NotConnectedException
-	 *             Either connect() is not called or modem has been disconnected.
+	 * @param messageList A list of COutgoingMessage objects presenting messages that will be sent out.
+	 * @throws NotConnectedException Either connect() is not called or modem has been disconnected.
 	 * @see CService#sendMessage(COutgoingMessage)
 	 * @see COutgoingMessage
 	 * @see CWapSIMessage
@@ -1074,7 +1011,7 @@ public class CService {
 			for (COutgoingMessage message : messageList) sendMessage_PDU(message);
 		} else throw new NotConnectedException();
 	}
-	
+
 	/**
 	 * Possibly keeps the link to the GSM device open???
 	 */
@@ -1089,7 +1026,7 @@ public class CService {
 			// We pass the length of the PDU, in octets, to the device.  This length does NOT
 			// include the PDU's prefix containing the SMSC number, so this length must be
 			// calculated and subtracted from the total.
-			/** The length of the PDU in octets, not including the encoded SMSC Number. */
+			// The length of the PDU in octets, not including the encoded SMSC Number.
 			int pduLength = pdu.length() >> 1;
 			// If there is no SMSC Number set, we will not have appended one to the start of the message.
 			if (smscNumber != null) {
@@ -1110,7 +1047,7 @@ public class CService {
 					pduLength -= smscLen;
 				}
 			}
-			
+
 			// Get the reference number for the sent message.  For a message that is successfully sent, this will
 			// be set by the SMSC; for a failed message, this will be some value less than zero.  For this reason,
 			// we must update the reference number of the message object even if it is < 0
@@ -1119,7 +1056,7 @@ public class CService {
 				refNo = atHandler.sendMessage(pduLength, pdu, null, null);
 			}
 			message.setRefNo(refNo);
-			
+
 			if (refNo >= 0) {
 				message.setDispatchDate();
 				deviceInfo.getStatistics().incTotalOut();
@@ -1142,8 +1079,6 @@ public class CService {
 	}
 
 	/**
-	 * 
-	 * @param hexText A StringBuilder.  Should be empty, and will be empty on return.
 	 * @param message
 	 * @return
 	 * @throws IOException
@@ -1195,7 +1130,7 @@ public class CService {
 			int memIndex = message.getMemIndex();
 			String memLocation = message.getMemLocation();
 			// If this message has its memIndex set, we delete it directly.  Otherwise, it may be
-			// a reference to a multipart message.  In this case, we must delete each part separately.
+			// a reference to a multipart message. In this case, we must delete each part separately.
 			if (memIndex >= 0) {
 				deleteMessage(memIndex, memLocation);
 			} else {
@@ -1299,59 +1234,39 @@ public class CService {
 					log.info("GSM: Invalid CREG response.");
 					throw new DebugException("GSM: Invalid CREG response.");
 			}
-			sleep_ignoreInterrupts(1000);
+			CUtils.sleep_ignoreInterrupts(1000);
 		}
 	}
 
 	public String getManufacturer() throws IOException {
 		String response = atHandler.getManufacturer();
-		if (response.contains("ERROR")) return VALUE_NOT_REPORTED;
-		response = response.replaceAll("\\s+OK\\s+", "");
-		response = response.replaceAll("\\s+", "");
-		response = response.replaceAll("\"", "");
-		response = response.replaceAll(",", "");
-		response = response.replaceAll(":", "");
-		return response;
+		if(isError(response)) return VALUE_NOT_REPORTED;
+		Matcher m = Pattern.compile("[\\w\\.-]+( {1,2}[\\w\\.-]+)*").matcher(response);
+		if(m.find()) return m.group().replaceAll("\\s", "");
+		else return VALUE_NOT_REPORTED;
 	}
 
 	public String getModel() throws IOException {
 		String response = atHandler.getModel();
 		if (response.contains("ERROR")) return VALUE_NOT_REPORTED;
-		response = response.replaceAll("\\s+OK\\s+", "");
-		response = response.replaceAll("\\s+", "");
-		response = response.replaceAll("\"", "");
-		response = response.replaceAll(",", "");
-		response = response.replaceAll(":", "");
-		if (response.toUpperCase().contains("MODEL=")) {
-			response = response.substring(response.indexOf("MODEL=") + "MODEL=".length());
-		}
-		return response;
+		Matcher m1 = Pattern.compile("(?:MODEL=(\\w+))").matcher(response);
+		if(m1.find()) return m1.group(1).replaceAll("\\s+", "");
+		Matcher m2 = Pattern.compile("[\\w\\.-]+( {1,2}[\\w\\.-]+)*").matcher(response);
+		if(m2.find()) return m2.group().replaceAll("\\s+", "");
+		else return VALUE_NOT_REPORTED;
 	}
 
 	public String getSerialNo() throws IOException {
-		String response = atHandler.getSerialNo();
-		if (response.matches("\\s*[\\p{ASCII}]*\\s+ERROR(?:: \\d+)?\\s+")) return VALUE_NOT_REPORTED;
-		response = response.replaceAll("\\s+OK\\s+", "");
-		response = response.replaceAll("\\s+", "");
-		response = response.replaceAll("\\D", "");
-		return response;
+		return getRegexMatch(atHandler.getSerialNo(), "\\d+");
 	}
 
 	public String getImsi() throws IOException {
-		 String response = atHandler.getImsi();
-		 if(response.matches("\\s*[\\p{ASCII}]*\\s+ERROR(?:: \\d+)?\\s+")) return VALUE_NOT_REPORTED;
-		 response = response.replaceAll("\\s+OK\\s+", "");
-		 response = response.replaceAll("\\s+", "");
-		 return response;
-		
+		return getRegexMatch(atHandler.getImsi(), "\\d+");
 	}
 
 	public String getSwVersion() throws IOException {
 		String response = atHandler.getSwVersion();
-		if (response.matches("\\s*[\\p{ASCII}]*\\s+ERROR(?:: \\d+)?\\s+")) return VALUE_NOT_REPORTED;
-		response = response.replaceAll("\\s+OK\\s+", "");
-		response = response.replaceAll("\\s+", "");
-		return response;
+		return getRegexMatch(response, "\\S+( \\S+)*");
 	}
 
 	public boolean getGprsStatus() throws IOException {
@@ -1359,66 +1274,45 @@ public class CService {
 	}
 
 	public int getBatteryLevel() throws IOException {
-		String response = atHandler.getBatteryLevel();
-		if (response.matches("\\s*[\\p{ASCII}]*\\s+ERROR(?:: \\d+)?\\s+")) return 0;
-		response = response.replaceAll("\\s+OK\\s+", "");
-		response = response.replaceAll("\\s+", "");
-		StringTokenizer tokens = new StringTokenizer(response, ":,");
-		tokens.nextToken();
-		tokens.nextToken();
-		return Integer.parseInt(tokens.nextToken());
+		String response = getTokenized(atHandler.getBatteryLevel(), 2);
+		return safeParseInt(response);
+	}
+	
+	private static String getRegexMatch(String response, String regex) {
+		if (isError(response)) return VALUE_NOT_REPORTED;
+		Matcher m = Pattern.compile(regex).matcher(response);
+		return m.find()? m.group(): VALUE_NOT_REPORTED;
+	}
+	
+	private static String getTokenized(String response, int tokenIndex) {
+		if(isError(response)) return "";
+		try {
+			response = response.replaceAll("\\s+OK\\s+", "");
+			response = response.replaceAll("\\s+", "");
+			StringTokenizer tokens = new StringTokenizer(response, ":,");
+			while(tokenIndex-- > 0) tokens.nextToken();
+			return tokens.nextToken();
+		} catch(NoSuchElementException ex) {
+			return "";
+		}
+	}
+	
+	private static int safeParseInt(String response) {
+		try {
+			return Integer.parseInt(response);
+		} catch(NumberFormatException ex) {
+			return 0;
+		}
 	}
 
 	public int getSignalLevel() throws IOException {
-		String response = atHandler.getSignalLevel();
-		if (response.matches("\\s*[\\p{ASCII}]*\\s+ERROR(?:: \\d+)?\\s+")) return 0;
-		response = response.replaceAll("\\s+OK\\s+", "");
-		response = response.replaceAll("\\s+", "");
-		StringTokenizer tokens = new StringTokenizer(response, ":,");
-		tokens.nextToken();
-		return (Integer.parseInt(tokens.nextToken().trim()) * 100 / 31);
+		String response = getTokenized(atHandler.getSignalLevel(), 1);
+		return safeParseInt(response.trim()) * 100 / 31;
 	}
-	
+
 	public String getMsisdn() throws IOException {
-		String response = atHandler.getMsisdn();
-		if (response.contains("ERROR")) return VALUE_NOT_REPORTED;
-		response = response.replaceAll("\\s+OK\\s+", "");
-		response = response.replaceAll("\\s+", "");
-		response = response.replaceAll(":", "");
-		int splitPoint = response.indexOf('"') + 1;
-		if (splitPoint != 0) response = response.substring(splitPoint, response.indexOf('"', splitPoint));
-		splitPoint = response.indexOf(',') + 1;
-		if (splitPoint != 0) response = response.substring(splitPoint, response.indexOf(',', splitPoint));
-		return response;
-	}
-
-	/**
-	 * TODO should implement this properly using constants from {@link TpduUtils}
-	 * @param pdu
-	 * @return
-	 */
-	private boolean isIncomingMessage(String pdu) {
-		int index, i;
-
-		i = Integer.parseInt(pdu.substring(0, 2), 16);
-		index = (i + 1) * 2;
-
-		i = Integer.parseInt(pdu.substring(index, index + 2), 16);
-		if ((i & 0x03) == 0) return true;
-		else return false;
-	}
-
-	/**
-	 * TODO should implement this properly using constants from {@link TpduUtils}
-	 * @param pdu
-	 * @return
-	 */
-	public static boolean isStatusReportMessage(String pdu) {
-		int i = Integer.parseInt(pdu.substring(0, 2), 16);
-		int index = (i + 1) * 2;
-
-		i = Integer.parseInt(pdu.substring(index, index + 2), 16);
-		return (i & TpduUtils.TP_MTI_MASK) == TpduUtils.TP_MTI_MT_STATUS_REPORT;
+	    Matcher m = Pattern.compile("(?:,\"?)(.*?)(?:\"?,)").matcher(atHandler.getMsisdn());
+	    return m.find()? m.group(1): VALUE_NOT_REPORTED;
 	}
 
 	public boolean received(CIncomingMessage message) {
@@ -1427,12 +1321,11 @@ public class CService {
 
 	private class CKeepAliveThread extends Thread {
 		private volatile boolean stopFlag;
-
 		private volatile boolean stopped;
 
 		public CKeepAliveThread() {
 			super(serialDriver.getPort() + " KeepAlive");
-			
+
 			stopFlag = false;
 			stopped = false;
 		}
@@ -1450,7 +1343,7 @@ public class CService {
 
 		public void run() {
 			while (!stopFlag) {
-				sleep_ignoreInterrupts(keepAliveInterval);
+				CUtils.sleep_ignoreInterrupts(keepAliveInterval);
 				if (stopFlag) break;
 				synchronized (_SYNC_) {
 					if (isConnected()) try {
@@ -1477,7 +1370,7 @@ public class CService {
 
 		public CReceiveThread() {
 			super(serialDriver.getPort() + " Receive");
-			
+
 			stopFlag = false;
 			stopped = false;
 		}
@@ -1497,17 +1390,17 @@ public class CService {
 			LinkedList<CIncomingMessage> messageList = new LinkedList<CIncomingMessage>();
 			try {
 				while (!stopFlag) {
-					int state = newMsgMonitor.waitEvent(asyncPollInterval);
+					CNewMsgMonitor.State state = newMsgMonitor.waitEvent(asyncPollInterval);
 					if (stopFlag) break;
 					if (isConnected() && (receiveMode == ReceiveMode.ASYNC_CNMI || receiveMode == ReceiveMode.ASYNC_POLL)) {
 						try {
-							if (state == CNewMsgMonitor.DATA && !atHandler.dataAvailable() && newMsgMonitor.getState() != CNewMsgMonitor.CMTI) continue;
+							if (state == CNewMsgMonitor.State.DATA && !atHandler.dataAvailable() && newMsgMonitor.getState() != CNewMsgMonitor.State.CMTI) continue;
 
 							newMsgMonitor.reset();
 							messageList.clear();
 							readMessages(messageList, asyncRecvClass);
 							for (int i = 0; i < messageList.size(); i++) {
-								CIncomingMessage message =  messageList.get(i);
+								CIncomingMessage message = messageList.get(i);
 								ISmsMessageListener messageHandler = getMessageHandler();
 								if (messageHandler == null) {
 									if (received(message)) {
@@ -1532,53 +1425,8 @@ public class CService {
 		}
 	}
 
-	/** Holds values representing the message class of the message to be read from the GSM device. */
-	public static enum MessageClass {
-		/** Read all messages. */
-		ALL(4, "ALL"),
-		/** Read unread messages. After reading, all returned messages will be marked as read. */
-		UNREAD(0, "REC UNREAD"),
-		/** Read already-read messages. */
-		READ(1, "REC READ");
-
-	//> INSTANCE PROPERTIES
-		/** text ID for this {@link MessageClass} when listing messages on a device in TEXT mode */
-		private final String textModeId;
-		/** integer ID for this {@link MessageClass} when listing messages on a device in PDU mode */
-		private final int pduModeId;
-		
-	//> CONSTRUCTORS
-		/**
-		 * Create a new {@link MessageClass}
-		 * @param pduModeId value for {@link #pduModeId}
-		 * @param textModeId value for {@link #textModeId}
-		 */
-		MessageClass(int pduModeId, String textModeId) {
-			this.pduModeId = pduModeId;
-			this.textModeId = textModeId;
-		}
-
-		/** @return the text ID for this {@link MessageClass} when listing messages on a device in TEXT mode. */
-		public String getTextId() {
-			return this.textModeId;
-		}
-		/** @return the integer ID for this {@link MessageClass} when listing messages on a device in PDU mode. */
-		public int getPduModeId() {
-			return this.pduModeId;
-		}
-	}
-
-	/**
-	 * Make the thread sleep; ignore InterruptedExceptions.
-	 * @param millis
-	 * @return the number of milliseconds actually slept for
-	 */
-	public static long sleep_ignoreInterrupts(long millis) {
-		long startTime = System.currentTimeMillis();
-		try {
-			Thread.sleep(millis);
-		} catch(InterruptedException ex) {}
-		return System.currentTimeMillis() - startTime;
+	static boolean isError(String response) {
+		return response.matches("()|(\\s*[\\p{ASCII}]*\\s+ERROR(: (\\w+ ?)+)?\\s+)");
 	}
 	
 	/**
@@ -1596,7 +1444,7 @@ public class CService {
 	public boolean supportsBinarySmsSending() {
 		return atHandler.supportsBinarySmsSending();
 	}
-	
+
 	/**
 	 * Checks whether this service has support for sending SMS binary messages
 	 * @return true if this service supports sending of SMS binary message.
@@ -1605,16 +1453,29 @@ public class CService {
 		return this.atHandler.supportsUcs2SmsSending();
 	}
 
+	public ATHandler getAtHandler() {
+		return this.atHandler;
+	}
+
 	public String getAtHandlerName() {
 		if (atHandler == null) return null;
 		return atHandler.getClass().getSimpleName();
 	}
-	
+
 	public boolean supportsStk() {
 		return atHandler.supportsStk();
 	}
+
+	public StkResponse stkRequest(StkRequest request, String... variables)
+			throws SMSLibDeviceException, IOException {
+		synchronized(_SYNC_) {
+			return atHandler.stkRequest(request, variables);
+		}
+	}
 	
-	public StkResponse stkRequest(StkRequest request, String... variables) throws SMSLibDeviceException, IOException {
-		return atHandler.stkRequest(request, variables);
+	public <T> T doSynchronized(ATHandler.SynchronizedWorkflow<T> workflow) throws SMSLibDeviceException, IOException {
+		synchronized(_SYNC_) {
+			return workflow.run();
+		}
 	}
 }

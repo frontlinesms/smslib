@@ -83,7 +83,7 @@ public class CATHandlerUtils {
 	}
 	
 	/** List of all AT handler classes */
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings("rawtypes")
 	private static final Class[] HANDLERS = {
 		CATHandler.class,
 		CATHandler_Huawei.class,
@@ -99,6 +99,7 @@ public class CATHandlerUtils {
 		CATHandler_SonyEricsson.class,
 		CATHandler_Symbian_PiAccess.class,
 		CATHandler_Wavecom_M1306B.class,
+		CATHandler_Wavecom_Stk.class,
 		CATHandler_Wavecom.class,
 	};
 

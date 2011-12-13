@@ -6,6 +6,7 @@ package org.smslib.handler;
 import org.apache.log4j.Logger;
 import org.smslib.CSerialDriver;
 import org.smslib.CService;
+import org.smslib.service.Protocol;
 
 import net.frontlinesms.junit.BaseTestCase;
 
@@ -38,7 +39,7 @@ public class CATHandlerTest extends BaseTestCase {
 		when(serialDriver.getResponse()).thenReturn(response1, responses);
 		
 		CService cService = mock(CService.class);
-		when(cService.getProtocol()).thenReturn(CService.Protocol.PDU);
+		when(cService.getProtocol()).thenReturn(Protocol.PDU);
 		
 		Logger log = mock(Logger.class);
 		
@@ -47,7 +48,7 @@ public class CATHandlerTest extends BaseTestCase {
 		assertEquals(expectedSmscReferenceNumber, smscRefNumber);
 		
 		// Check the size, PDU and SUB character were sent
-		verify(serialDriver).send("AT+CMGS=" + size + "\r");
+		verify(serialDriver).send("AT+CMGS=" + size + '\r');
 		verify(serialDriver).send(pdu);
 		verify(serialDriver).send((char)26);
 	}

@@ -23,20 +23,16 @@ package org.smslib.handler;
 
 import java.io.IOException;
 import java.util.*;
+
 import org.smslib.*;
-import org.smslib.CService.MessageClass;
+import org.smslib.service.MessageClass;
+import org.smslib.service.Protocol;
 import org.smslib.stk.NoStkSupportException;
 import org.smslib.stk.StkRequest;
 import org.smslib.stk.StkResponse;
 import org.apache.log4j.*;
 
 public class CATHandler implements ATHandler {
-	/**
-	 * Exceptionally fine logging level used when troubleshooting low-level problems with AT devices.
-	 * FIXME remove this and disable it
-	 */
-	//private static final boolean TRACE = false;
-	private static final boolean TRACE = true;
 	/** The value returned by {@link #sendMessage(int, String, String, String)} instead of a valid
 	 * SMSC reference number when sending a message failed. */
 	protected static final int SMSC_REF_NUMBER_SEND_FAILED = -1;
@@ -49,6 +45,7 @@ public class CATHandler implements ATHandler {
 	
 	/** Character used to terminate a line after an AT command */
 	protected static final String END_OF_LINE = "\r";
+	
 	/** AT Command for switching echo off */
 	private static final String AT_ECHO_OFF = "ATE0";
 	/** AT Command for retrieving the IMSI number of the connected device */
@@ -135,7 +132,7 @@ public class CATHandler implements ATHandler {
 	}
 
 	public boolean enterPin(String pin) throws IOException {
-		serialDriver.send(CUtils.replace("AT+CPIN=\"{1}\"\r", "{1}", pin));
+		serialDriver.send("AT+CPIN=\"" + pin + "\"\r");
 		sleepWithoutInterruption(DELAY_PIN);
 		if(serialDriver.getResponse().contains("OK")) {
 			sleepWithoutInterruption(DELAY_PIN);
@@ -223,7 +220,7 @@ public class CATHandler implements ATHandler {
 		int errorRetries = 0;
 		while (true) {
 			int responseRetries = 0;
-			serialDriver.send(CUtils.replace("AT+CMGS=\"{1}\"\r", "\"{1}\"", "" + size));
+			serialDriver.send("AT+CMGS=" + size + "\r");
 			sleepWithoutInterruption(DELAY_CMGS);
 			while (!serialDriver.dataAvailable()) {
 				responseRetries++;
@@ -268,8 +265,7 @@ public class CATHandler implements ATHandler {
 	}
 	
 	private int sendMessage_TEXT(String phone, String text) throws IOException {
-		String cmd1 = CUtils.replace("AT+CMGS=\"{1}\"\r", "{1}", phone);
-		serialDriver.send(cmd1);
+		serialDriver.send("AT+CMGS=\"" + phone + "\"\r");
 		serialDriver.emptyBuffer();
 		serialDriver.send(text);
 		sleepWithoutInterruption(DELAY_CMGS);
@@ -285,7 +281,7 @@ public class CATHandler implements ATHandler {
 	/** Sends an SMS message and retrieves the SMSC reference number assigned to it. */
 	public int sendMessage(int size, String pdu, String phone, String text) throws IOException, NoResponseException, UnrecognizedHandlerProtocolException {
 		int smscReferenceNumber;
-		CService.Protocol messageProtocol = srv.getProtocol();
+		Protocol messageProtocol = srv.getProtocol();
 		switch(messageProtocol) {
 			case PDU:
 				smscReferenceNumber = sendMessage_PDU(size, pdu);
@@ -317,9 +313,7 @@ public class CATHandler implements ATHandler {
 	}
 
 	public String listMessages(MessageClass messageClass) throws IOException, UnrecognizedHandlerProtocolException, SMSLibDeviceException {
-		if(TRACE) System.out.println("CATHandler.listMessages() : " + this.getClass().getSimpleName());
-		
-		CService.Protocol messageProtocol = srv.getProtocol();
+		Protocol messageProtocol = srv.getProtocol();
 		switch (messageProtocol) {
 			case PDU:
 				return serialSendReceive("AT+CMGL=" + messageClass.getPduModeId());
@@ -332,7 +326,7 @@ public class CATHandler implements ATHandler {
 
 	public boolean deleteMessage(int memIndex, String memLocation) throws IOException {
 		if (!setMemoryLocation(memLocation)) throw new RuntimeException("CATHandler.deleteMessage() : Memory Location not found!!!");
-		String response = serialSendReceive(CUtils.replace("AT+CMGD={1}", "{1}", "" + memIndex));
+		String response = serialSendReceive("AT+CMGD=" + memIndex);
 		return response.matches("\\s+OK\\s+");
 	}
 
@@ -366,15 +360,10 @@ public class CATHandler implements ATHandler {
 	 * @throws IOException if access to {@link ATHandler#serialDriver} throws an {@link IOException}
 	 */
 	public String serialSendReceive(String command) throws IOException {
-		if(TRACE) log.info("ISSUING COMMAND: " + command);
-		if(TRACE) System.out.println("[" + Thread.currentThread().getName() + "] ISSUING COMMAND: " + command);
 		serialDriver.send(command + END_OF_LINE);
-		String response = serialDriver.getResponse();
-		if(TRACE) log.info("RECEIVED RESPONSE: " + response);
-		if(TRACE) System.out.println("[" + Thread.currentThread().getName() + "] RECEIVED RESPONSE: " + response);
-		return response;
+		return serialDriver.getResponse();
 	}
-	
+
 	/**
 	 * Writes an AT command to the serial driver and retrieves the response.  The supplied
 	 * command will be prepended with "AT+" and appended with a \r.  If requested, any
@@ -424,12 +413,17 @@ public class CATHandler implements ATHandler {
 		return true;
 	}
 
-	public CService.Protocol getProtocol() {
-		return CService.Protocol.PDU;
+	public Protocol getProtocol() {
+		return Protocol.PDU;
 	}
 
 	public boolean supportsStk() {
 		return false;
+	}
+
+	/** TODO please work out what the difference between these 2 inits are AND DOCUMENT THEM */
+	public void stkInit() throws SMSLibDeviceException, IOException {
+		if(!supportsStk()) throw new IllegalStateException("Cannot initialise STK if not supported.");
 	}
 
 	public StkResponse stkRequest(StkRequest request, String... variables) throws SMSLibDeviceException, IOException {

@@ -1,20 +1,17 @@
 package org.smslib.stk;
 
-public class StkMenuItem extends StkRequest {
-	public static final StkMenuItem ERROR = new StkMenuItem();
-	private String text;
-	private String menuId; //MenuId of the menu where the item belongs to
-	private String menuItemId; //Id of the item itself
+public class StkMenuItem implements StkRequest {
+	/** ID of this item */
+	private final String id;
+	private final String text;
+	/** ID of the menu this item belongs to */
+	// FIXME is this ID ever used... or can we discard it?
+	private final String menuId;
 
-	public StkMenuItem(String text, String menuId, String menuItemId) {
-		super();
+	public StkMenuItem(String id, String text, String menuId) {
+		this.id = id;
 		this.text = text;
 		this.menuId = menuId;
-		this.menuItemId = menuItemId;
-	}
-	
-	public StkMenuItem() {
-		// TODO Auto-generated constructor stub
 	}
 
 	public String getText() {
@@ -25,15 +22,11 @@ public class StkMenuItem extends StkRequest {
 		return menuId;
 	}
 
-	public String getMenuItemId() {
-		return menuItemId;
+	public String getId() {
+		return id;
 	}
 
 	public StkRequest getRequest() {
-		return this;
-	}
-	
-	public StkRequest getRequest(String string) {
 		return this;
 	}
 }

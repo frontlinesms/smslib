@@ -21,18 +21,17 @@
 
 package org.smslib;
 
-public class CUtils
-{
-	public static String replace(String text, String symbol, String value)
-	{
-		StringBuilder buffer;
-
-		while (text.indexOf(symbol) >= 0)
-		{
-			buffer = new StringBuilder(text);
-			buffer.replace(text.indexOf(symbol), text.indexOf(symbol) + symbol.length(), value);
-			text = buffer.toString();
-		}
-		return text;
+public class CUtils {
+	/**
+	 * Make the thread sleep; ignore InterruptedExceptions.
+	 * @param millis
+	 * @return the number of milliseconds actually slept for
+	 */
+	public static long sleep_ignoreInterrupts(long millis) {
+		long startTime = System.currentTimeMillis();
+		try {
+			Thread.sleep(millis);
+		} catch(InterruptedException ex) {}
+		return System.currentTimeMillis() - startTime;
 	}
 }
