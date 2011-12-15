@@ -432,7 +432,8 @@ public class CATHandler implements ATHandler {
 		return false;
 	}
 
-	/** TODO please work out what the difference between these 2 inits are AND DOCUMENT THEM */
+	// TODO this should be inside CService like other methods such as sendMessage, and this should then
+	// delegate to ATHandler.  This would, amongst other things, remove the need for doSynchronized
 	public void stkInit() throws SMSLibDeviceException, IOException {
 		if(!supportsStk()) throw new IllegalStateException("Cannot initialise STK if not supported.");
 	}
@@ -440,37 +441,35 @@ public class CATHandler implements ATHandler {
 	public StkResponse stkRequest(StkRequest request, String... variables) throws SMSLibDeviceException, IOException {
 		throw new NoStkSupportException();
 	}
-	
+
+	// TODO this should be inside CService like other methods such as sendMessage, and this should then
+	// delegate to ATHandler.
 	public void initUssd() throws SMSLibDeviceException, IOException {
 		String originalSetting = serialSendReceive("AT+CUSD?");
-		System.out.println("originalSetting: " + escapeJava(originalSetting));
 		if(!originalSetting.matches("\\s+.*\\s+OK\\s+")) {
 			throw new SMSLibDeviceException("Device does not support USSD: " + escapeJava(originalSetting));
 		}
 		if(!originalSetting.matches("\\s+\\+CUSD: 1\\s+OK\\s+")) {
 			String set = serialSendReceive("AT+CUSD=1");
-			System.out.println("set: " + escapeJava(set));
 			if(!set.matches("\\s+OK\\s+")) {
 				throw new SMSLibDeviceException("Could not set USSD to 1: " + escapeJava(set));
 			}
 		}
 	}
 	
+	// TODO this should be inside CService like other methods such as sendMessage, and this should then
+	// delegate to ATHandler.  This would, amongst other things, remove the need for doSynchronized
 	public UssdResponse ussdRequest(final String ussdNumberSequence) throws SMSLibDeviceException, IOException {
-		System.out.println("CATHandler.ussdRequest() : " + ussdNumberSequence);
 		return srv.doSynchronized(new SynchronizedWorkflow<UssdResponse>() {
 			@Override
 			public UssdResponse run() throws SMSLibDeviceException, IOException {
 				initUssd();
 				String response = serialSendReceive("AT+CUSD=1,\"" + ussdNumberSequence + "\",15");
-				System.out.println("Got primary response: " + response);
 				Matcher responseMatcher = Pattern.compile("\\s+(?:\\+CUSD: (\\d+))?\\s+OK\\s+").matcher(response);
 				if(!responseMatcher.find()) throw new SMSLibDeviceException("Error getting CUSD response: " + response);
-				System.out.println("Group 1: " + responseMatcher.group(1));
 				long timeout = System.currentTimeMillis() + 2000;
 				String buffer = serialDriver.getLastClearedBuffer();
 				while(!isValidCusdResponse(buffer)) {
-					System.out.println("buffer: " + escapeJava(buffer));
 					if(buffer.contains("ERROR")) {
 						throw new SMSLibDeviceException("Error while waiting for CUSD response: " + escapeJava(buffer));
 					}
@@ -494,10 +493,6 @@ public class CATHandler implements ATHandler {
 	}
 	
 	UssdResponse parseUssdResponse(String response) throws UssdParseException {
-		System.out.println("==========");
-		System.out.println(escapeJava(response));
-		System.out.println("==========");
-		
 		Matcher m = CUSD_RESPONSE_PATTERN.matcher(response);
 		if(!m.find()) throw new UssdParseException(response);
 		String type = m.group(1);
