@@ -2,16 +2,16 @@ package org.smslib.logging;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PrintStream;
+import java.io.PrintWriter;
 
 public class LoggingInputStream extends InputStream implements StreamLogger {
 	private InputStream in;
-	private PrintStream log;
+	private PrintWriter log;
 	private StringBuilder buffer = new StringBuilder();
 	private String logPrefix;
 	private char[] terminators;
 
-	public LoggingInputStream(InputStream in, PrintStream log, String logPrefix, char...terminators) {
+	public LoggingInputStream(InputStream in, PrintWriter log, String logPrefix, char...terminators) {
 		this.in = in;
 		this.log = log;
 		this.logPrefix = logPrefix;
@@ -24,7 +24,7 @@ public class LoggingInputStream extends InputStream implements StreamLogger {
 	public StringBuilder getBuffer() {
 		return buffer;
 	}
-	public PrintStream getLog() {
+	public PrintWriter getLog() {
 		return log;
 	}
 	public String getLogPrefix() {

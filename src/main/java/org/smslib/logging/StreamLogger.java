@@ -1,9 +1,9 @@
 package org.smslib.logging;
 
-import java.io.PrintStream;
+import java.io.PrintWriter;
 
 interface StreamLogger {
-	PrintStream getLog();
+	PrintWriter getLog();
 	StringBuilder getBuffer();
 	String getLogPrefix();
 	char[] getTerminators();

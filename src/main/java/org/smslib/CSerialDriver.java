@@ -24,11 +24,10 @@ package org.smslib;
 import serial.*;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.util.TooManyListenersException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -123,11 +122,11 @@ public class CSerialDriver implements SerialPortEventListener {
 		// FIXME this line should obviously NOT be committed:
 		if(STREAM_LOGGING_ENABLED) {
 			String modemName = port.replace('/', '_');
-			PrintStream fileLog;
+			PrintWriter fileLog;
 			try {
 				File f = new File(System.getProperty("user.home"), "/temp/frontlinesmsmodemlogs/" + modemName + "_" + System.currentTimeMillis() + ".log");
 				f.getParentFile().mkdirs();
-				fileLog = new PrintStream(new FileOutputStream(f));
+				fileLog = new PrintWriter(f, "UTF-8");
 			} catch(Exception ex) {
 				ex.printStackTrace();
 				throw new RuntimeException(ex);
