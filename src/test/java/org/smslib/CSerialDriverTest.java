@@ -226,7 +226,7 @@ public class CSerialDriverTest extends BaseTestCase {
 	public void testReadToBuffer() throws IOException, ServiceDisconnectedException {
 		String[][] goodInputsAndOutputs = {
 				// line terminators
-				{"\n", "\n"}, {"\r", "\r"}, {"> ", ">"},
+				{"\n", "\n"}, {"\r", "\r"},
 				// a number of lines - should get the first only
 				{"ABCDEFGHIJKLMNOP\r1234567890", "ABCDEFGHIJKLMNOP\r"},
 				// an empty input stream should cause the method to return an empty buffer

@@ -196,7 +196,7 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 	
 	public void testStkValuePrompt() throws SMSLibDeviceException, IOException {
 		// given
-		mockModemResponses("\r\nOK\r\n\r\n+STIN: 3\r\n",
+		mockModemResponses_unescaped("\r\nOK\r\n\r\n+STIN: 3\r\n",
 				"\r\n+STGI: 0,1,0,20,0,\"Enter phone no.\"\r\n\r\nOK\r\n",
 				"\r\n> \r\nOK\r\n\r\n+STIN: 3\r\n",
 				"\r\n+STGI: 0,1,0,8,0,\"Enter amount\"\r\n\r\nOK\r\n");
@@ -213,11 +213,26 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 		// when we submit the value
 		StkResponse phoneNumberSubmitResponse = h.stkRequest(((StkValuePrompt) menuItemResponse).getRequest(), "+12345678");
 		
-		// we are given a success message
+		// we are given a response
 		verifySentToModem("AT+STGR=3,1,1",
 				"+12345678" + CTRL_Z + "AT+STGI=3");
 		assertTrue(phoneNumberSubmitResponse instanceof StkResponse);
 	}
+	
+	public void testStkValuePromptRequest() throws Exception {
+		// given
+		mockModemResponses_unescaped("\r\n> \r\nOK\r\n\r\n+STIN: 3\r\n",
+				"\r\n+STGI: 0,1,0,20,0,\"Enter phone no.\"\r\n\r\nOK\r\n" /* FIXME replace with real response */);
+		StkRequest request = new StkValuePrompt("Enter phone no.").getRequest();
+		
+		// when
+		h.stkRequest(request, "0702123456");
+		        
+		// then
+		verifySentToModem("AT+STGR=3,1,1",
+				"0702123456"+CTRL_Z+"AT+STGI=3");
+	}
+
 	
 	public void testStkSubmenuRequest() throws SMSLibDeviceException, IOException {
 		// given
@@ -345,7 +360,7 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 	}
 	
 	public void testInitStkWithoutPin() throws Exception {
-		// when
+		// given
 		mockModemResponses("OK", "OK", "+CPIN: READY");
 		
 		// when
@@ -358,7 +373,7 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 	}
 	
 	public void testInitStkWithPin() throws Exception {
-		// when
+		// given
 		mockModemResponses("OK", "OK", "+CPIN: SIM PIN", "OK");
 		when(s.getSimPin()).thenReturn("1234");
 		
@@ -386,6 +401,10 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 		for (int i = 0; i < responses.length; i++) {
 			responses[i] = '\r' + responses[i] + "\r\n";
 		}
+		mockModemResponses_unescaped(responses);
+	}
+
+	private void mockModemResponses_unescaped(String... responses) throws IOException {
 		inject(d, "inStream", new MultipleStringInputStream(responses));
 	}
 

@@ -48,7 +48,7 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	private static final char CTRL_Z = 26;
 	/** Arbitrarily-chosen timeout for waiting for STIN response.  Please modify
 	 * and document if you have useful experience with how long this should be. */
-	private static final long STIN_WAIT_TIMEOUT = 5*60*1000;
+	private static final long STIN_WAIT_TIMEOUT = 15*1000;
 	
 	public CATHandler_Wavecom_Stk(CSerialDriver serialDriver, Logger log, CService srv) {
 		super(serialDriver, log, srv);
@@ -184,7 +184,7 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 				return parseStkResponse(send("AT+STGI=0"), "0");
 			} catch(StkParseException ex) {
 				// and now, retry
-				System.out.println("Retrying ROOT MENU fetch...");
+				log.info("Retrying root menu fetch after exception.", ex);
 			}
 		}
 		
@@ -203,9 +203,9 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 	private String getStinResponseId() throws SMSLibDeviceException, IOException, StkParseException {
 		String stinResponse = serialDriver.getLastClearedBuffer();
 		long timeToDie = System.currentTimeMillis() + STIN_WAIT_TIMEOUT;
-		while(!stinResponse.matches("\\s*\\+STIN: \\d+\\s*")) {
+		while(!stinResponse.matches("\\s*\\p{ASCII}*\\s*\\+STIN: \\d+\\s*")) {
 			if(stinResponse.contains("ERROR")) {
-				throw new SMSLibDeviceException("Error read for STIN response: " + stinResponse);
+				throw new StkParseException(stinResponse);
 			}
 			if(System.currentTimeMillis() > timeToDie) {
 				throw new SMSLibDeviceException("Timeout while waiting for STIN response.");

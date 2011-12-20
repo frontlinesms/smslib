@@ -313,7 +313,7 @@ public class CSerialDriver implements SerialPortEventListener {
 			}
 			buffer.append((char) c);
 			
-			if ((c == '\r') || (c == '\n') || (c == '>')) return;
+			if ((c == '\r') || (c == '\n')) return;
 		}
 	}
 	
@@ -324,10 +324,10 @@ public class CSerialDriver implements SerialPortEventListener {
 			String response = buffer.toString();
 
 			if (response.length() == 0
-					|| response.matches("\\s*[\\p{ASCII}]*\\s+OK\\s")
-					|| response.matches("\\s*[\\p{ASCII}]*\\s+READY\\s+")
-					|| response.matches("\\s*[\\p{ASCII}]*\\s+ERROR(:( \\w+)+)?\\s")
-					|| response.matches("\\s*[\\p{ASCII}]*\\s+SIM PIN\\s"))
+					|| response.matches("\\s*\\p{ASCII}*\\s+OK\\s")
+					|| response.matches("\\s*\\p{ASCII}*\\s+READY\\s+")
+					|| response.matches("\\s*\\p{ASCII}*\\s+ERROR(:( \\w+)+)?\\s")
+					|| response.matches("\\s*\\p{ASCII}*\\s+SIM PIN\\s"))
 				return;
 			else if (response.matches("\\s*[+]((CMTI)|(CDSI))[:][^\r\n]*[\r\n]")) {
 				if (log != null) log.debug("ME: " + escapeJava(buffer.toString()));
