@@ -1,5 +1,6 @@
 /**
- * (c) 2009 Alex Anderson, Masabi Ltd.
+ * @author Alex Anderson
+ * (c) 2009-2011 Kiwanja.net
  */
 package org.smslib.util;
 
@@ -906,16 +907,19 @@ public final class TpduUtils {
 	 * @throws IOException 
 	 */
 	public static long decodeServiceCentreTimeStamp(PduInputStream in) throws IOException {
-		Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("GMT")); 
-		cal.set(Calendar.YEAR, decodeSemiOctetNumber(in.read()) + 2000);
-		cal.set(Calendar.MONTH, decodeSemiOctetNumber(in.read()) - 1);
-		cal.set(Calendar.DAY_OF_MONTH, decodeSemiOctetNumber(in.read()));
-		cal.set(Calendar.HOUR_OF_DAY, decodeSemiOctetNumber(in.read()));
-		cal.set(Calendar.MINUTE, decodeSemiOctetNumber(in.read()));
-		cal.set(Calendar.SECOND, decodeSemiOctetNumber(in.read()));
-		cal.set(Calendar.MILLISECOND, 0);
-		
-		long timestamp = cal.getTimeInMillis();
+		long timestamp;
+		if(true) {
+			Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("GMT")); 
+			cal.set(Calendar.YEAR, decodeSemiOctetNumber(in.read()) + 2000);
+			cal.set(Calendar.MONTH, decodeSemiOctetNumber(in.read()) - 1);
+			cal.set(Calendar.DAY_OF_MONTH, decodeSemiOctetNumber(in.read()));
+			cal.set(Calendar.HOUR_OF_DAY, decodeSemiOctetNumber(in.read()));
+			cal.set(Calendar.MINUTE, decodeSemiOctetNumber(in.read()));
+			cal.set(Calendar.SECOND, decodeSemiOctetNumber(in.read()));
+			cal.set(Calendar.MILLISECOND, 0);
+			
+			timestamp = cal.getTimeInMillis();
+		}
 		
 		/**
 		 * We now need to check the timezone this message was from.  If it was not UTC, we will have to
@@ -930,10 +934,10 @@ public final class TpduUtils {
 		 */
 		int timezoneOctet = in.read();
 		if(timezoneOctet != 0) {
-			int timeZoneDifference = getTimezoneDifference(timezoneOctet);
-			
+			long timeZoneDifference = getTimezoneDifference(timezoneOctet);
+
 			// Convert the timezone difference to milliseconds and add it to the timestamp
-			timestamp -= (timeZoneDifference * 60 * 1000);
+			timestamp -= (timeZoneDifference * 60L * 1000L);
 		}
 		
 		return timestamp;

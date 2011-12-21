@@ -22,8 +22,9 @@ import net.frontlinesms.junit.BaseTestCase;
  * @author Alex
  */
 public class TpduUtilsTest extends BaseTestCase {
-	
-//> Message constants.  These are mostly for convenience.
+	private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("dd MMM yyyy HH:mm:ss ZZZZZ");
+
+	//> Message constants.  These are mostly for convenience.
 	private static final String[] TEXTS = {
 		"",
 		"Hello, here is a short test message.",
@@ -481,8 +482,8 @@ public class TpduUtilsTest extends BaseTestCase {
 	}
 	private void testDecodeServiceCentreTimestamp(String timestamp, String expected) throws Exception {
 		long ts = TpduUtils.decodeServiceCentreTimeStamp(new PduInputStream(timestamp));
-		long expectedTs = new SimpleDateFormat("dd MMM yyyy HH:mm:ss ZZZZZ").parse(expected).getTime();
-		assertEquals(expectedTs, ts);
+		long expectedTs = DATE_FORMAT.parse(expected).getTime();
+		assertDateEquals("Timestamp decoded incorrectly.", expectedTs, ts);
 	}
 
 	public void testGetTimezoneDifference() {

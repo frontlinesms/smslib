@@ -110,28 +110,24 @@ public class CIncomingMessage extends CMessage {
 			PduInputStream in = new PduInputStream(pdu);
 			
 			/** The number of the SMS center.  Not a very interesting thing to know, but still necessary to remove it from the front of the PDU */
-			@SuppressWarnings("unused")
-			String smscNumber = TpduUtils.decodeMsisdnFromAddressField(in, true);
+			in.readSmscAddress();
 			
 			// get the front byte, which identifies message content
-			byte byteZero = (byte)in.read();
+			byte byteZero = in.readByte();
 			boolean hasUdh = (byteZero & TpduUtils.TP_UDHI) != 0;
 	
 			/** [TP-OA: TP-Originating-Address] Address of the originating SME. */
-			String originator = TpduUtils.decodeMsisdnFromAddressField(in, false);
-			this.originator = originator;
+			this.originator = in.readAddress();
 	
 			/** [TP-PID: TP-Protocol-Identifier] Parameter identifying the above layer protocol, if any. */
-			int protocolIdentifier = in.read();
-			this.protocolIdentifier = protocolIdentifier;
+			this.protocolIdentifier = in.read();
 	
 			/** [TP-DCS: TP-Data-CodingScheme] Parameter identifying the coding scheme within the TP-User-Data. */
 			int dataCodingScheme = in.read();
 			this.messageEncoding = TpduUtils.getMessageEncoding(dataCodingScheme);
 			
 			/** [TP-SCTS: TP-Service-Centre-Time-Stamp] Parameter identifying time when the SC received the message. */
-			long serviceCentreTimeStamp = TpduUtils.decodeServiceCentreTimeStamp(in);
-			setDate(serviceCentreTimeStamp);
+			setDate(in.readTimestamp());
 			
 			/** [TP-UDL: TP-User-Data-Length] Length of the UD, specific to the encoding. */
 			int userDataLength = in.read();
@@ -217,10 +213,7 @@ public class CIncomingMessage extends CMessage {
 			byte[] udWithoutHeader = new byte[payloadLength];
 			in.readFully(udWithoutHeader);
 			
-			try {
-				in.read();
-				throw new MessageDecodeException("There were unexpected bytes at the end of this message.");
-			} catch(EOFException ex) { /* This exception was expected. */ }
+			in.checkEmpty();
 			
 			if(messageEncoding == SmsMessageEncoding.GSM_7BIT) {
 				// The position of the MS data actually depends on the length of the UDH, for some reason
@@ -235,12 +228,9 @@ public class CIncomingMessage extends CMessage {
 				this.messageBinary = udWithoutHeader;
 			}
 		} catch(MessageDecodeException ex) {
-			// This exception is already handled
 			throw ex;
-		} catch(Throwable t) {
-			// Unhandled Throwables are wrapped in an SmsDecodeException so they can be handled
-			// properly at the next level.
-			throw new MessageDecodeException("Error decoding PDU", t);
+		} catch(Exception ex) {
+			throw new MessageDecodeException("Error decoding PDU: " + pdu, ex);
 		}
 	}
 
