@@ -14,16 +14,16 @@ import org.smslib.CService;
  *
  */
 public class CATHandler_Simcom_SIMCOM_SIM300 extends CATHandler {
-      public CATHandler_Simcom_SIMCOM_SIM300(CSerialDriver serialDriver,
-                      Logger log, CService srv) {
-              super(serialDriver, log, srv);
-      }
+	public CATHandler_Simcom_SIMCOM_SIM300(CSerialDriver serialDriver,
+			Logger log, CService srv) {
+		super(serialDriver, log, srv);
+	}
 
-      @Override
-      public void switchToCmdMode() throws IOException {
-              // this modem doesn't seem to need to switch to command mode, and
-              // the usual +++ command causes it to return ERROR.  Consequently,
-              // doing nothing here is the safest thing to do :-)
-      }
+	@Override
+	public void switchToCmdMode() throws IOException {
+		// this modem doesn't seem to need to switch to command mode, and
+		// the usual +++ command causes it to return ERROR.  Consequently,
+		// doing nothing here is the safest thing to do :-)
+	}
 }
 
