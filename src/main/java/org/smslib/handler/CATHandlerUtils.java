@@ -84,7 +84,7 @@ public class CATHandlerUtils {
 	
 	/** List of all AT handler classes */
 	@SuppressWarnings("unchecked")
-	private static final Class[] HANDLERS = {
+	private static final Class[] HANDLERS = { // FIXME this should clearly be replaced with a Java4-safe serviceLoader implementation.
 		CATHandler.class,
 		CATHandler_Huawei.class,
 		CATHandler_Motorola_RAZRV3x.class,
@@ -94,6 +94,7 @@ public class CATHandlerUtils {
 		CATHandler_Siemens_MC75.class,
 		CATHandler_Siemens_S55.class,
 		CATHandler_Siemens_TC35.class,
+		CATHandler_Simcom_SIMCOM_SIM300.class,
 		CATHandler_SonyEricsson_GT48.class,
 		CATHandler_SonyEricsson_W550i.class,
 		CATHandler_SonyEricsson.class,
