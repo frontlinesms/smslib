@@ -7,7 +7,7 @@ public class TestCStatusReportMessage extends BaseTestCase {
 		"079144973770939906270C91449777621047012021216043000120212160930000",
 	};
 	
-	public void testPduDecode() {
+	public void testPduDecode() throws Exception {
 		for(String pdu : TEST_PDUS) {
 			CStatusReportMessage m = new CStatusReportMessage(pdu, 0, "");
 			

@@ -26,3 +26,4 @@ public class CATHandler_Simcom_SIMCOM_SIM300 extends CATHandler {
 		// doing nothing here is the safest thing to do :-)
 	}
 }
+

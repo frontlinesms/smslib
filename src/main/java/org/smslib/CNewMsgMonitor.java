@@ -21,58 +21,42 @@
 
 package org.smslib;
 
-public class CNewMsgMonitor
-{
-	public static final int IDLE = 0;
+public class CNewMsgMonitor {
+	/** N.B. the order of these values is important, as {@link CNewMsgMonitor#raise(State)} relies on {@link #ordinal()} for logic. */
+	enum State {
+		IDLE,
+		DATA,
+		CMTI
+	}
 
-	public static final int DATA = 1;
+	private State state = State.IDLE;
 
-	public static final int CMTI = 2;
-
-	private int state = IDLE;
-
-	public synchronized int getState()
-	{
-		//System.out.println("CNewMsgMonitor.getState()");
+	public synchronized State getState() {
 		return state;
 	}
 
-	public synchronized void reset()
-	{
-		//System.out.println("CNewMsgMonitor.reset()");
-		state = IDLE;
+	public synchronized void reset() {
+		state = State.IDLE;
 	}
 
-	public synchronized void raise(int state)
-	{
-		//System.out.println("CNewMsgMonitor.raise() : state="+this.state+"; newState="+state);
-		if(state > this.state) {
+	public synchronized void raise(State state) {
+		if(state.ordinal() > this.state.ordinal()) {
 			this.state = state;
 			try {
-//				try { throw new RuntimeException(); } catch(RuntimeException ex) { ex.printStackTrace(); }
 				Thread.sleep(5000);
 				notify();
-			} catch (InterruptedException e) {
-				//e.printStackTrace();
-			}
+			} catch (InterruptedException e) {}
 		}
 	}
 
-	public synchronized int waitEvent(long timeout)
-	{
-		//System.out.println("CNewMsgMonitor.waitEvent()");
-		if (state == IDLE)
-		{
-			try
-			{
+	public synchronized State waitEvent(long timeout) {
+		if (state == State.IDLE) {
+			try {
 				wait(timeout);
-			}
-			catch (Exception e)
-			{
-			}
+			} catch (Exception e) {}
 		}
-		int prevState = state;
-		state = IDLE;
+		State prevState = state;
+		state = State.IDLE;
 		return prevState;
 	}
 }

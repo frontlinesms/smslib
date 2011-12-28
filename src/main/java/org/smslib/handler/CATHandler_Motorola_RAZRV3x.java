@@ -26,7 +26,7 @@ import java.io.IOException;
 import java.io.StringReader;
 
 import org.smslib.*;
-import org.smslib.CService.MessageClass;
+import org.smslib.service.MessageClass;
 import org.apache.log4j.*;
 
 /**

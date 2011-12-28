@@ -10,8 +10,10 @@ import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
+import org.smslib.MessageDecodeException;
 import org.smslib.util.HexUtils;
 
+import static org.smslib.util.TpduUtils.*;
 
 /**
  * {@link InputStream} implementation used for reading PDUs.
@@ -55,6 +57,25 @@ public class PduInputStream extends DataInputStream {
 		} else {
 			return read;
 		}
+	}
+
+	public void checkEmpty() throws MessageDecodeException, IOException {
+		try {
+			read();
+			throw new MessageDecodeException("There were unexpected bytes at the end of this message.");
+		} catch(EOFException ex) { /* This exception was expected. */ }
+	}
+	
+	public String readSmscAddress() throws IOException {
+		return decodeMsisdnFromAddressField(this, true);
+	}
+	
+	public String readAddress() throws IOException {
+		return decodeMsisdnFromAddressField(this, false);
+	}
+	
+	public long readTimestamp() throws IOException {
+		return decodeServiceCentreTimeStamp(this);
 	}
 
 //> ACCESSORS

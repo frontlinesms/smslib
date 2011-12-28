@@ -21,8 +21,7 @@
 
 package org.smslib;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
+import org.smslib.sms.PduInputStream;
 
 public class CStatusReportMessage extends CIncomingMessage {
 	/**
@@ -64,76 +63,65 @@ public class CStatusReportMessage extends CIncomingMessage {
 	 * @param pdu
 	 * @param memIndex
 	 * @param memLocation
+	 * @throws MessageDecodeException 
 	 */
-	protected CStatusReportMessage(String pdu, int memIndex, String memLocation) {
+	protected CStatusReportMessage(String pdu, int memIndex, String memLocation) throws MessageDecodeException {
 		super(MessageType.StatusReport, memIndex, memLocation);
 
-		int index, i, j, k;
-
-		i = Integer.parseInt(pdu.substring(0, 2), 16);
-		index = (i + 1) * 2;
-		index += 2;
-		refNo = Integer.parseInt(pdu.substring(index, index + 2), 16);
-		index += 2;
-
-		i = Integer.parseInt(pdu.substring(index, index + 2), 16);
-		j = index + 4;
-		recipient = "";
-		for (k = 0; k < i; k += 2)
-			recipient = recipient + pdu.charAt(j + k + 1) + pdu.charAt(j + k);
-		recipient = "+" + recipient;
-		if (recipient.charAt(recipient.length() - 1) == 'F') {
-			recipient = recipient.substring(0, recipient.length() - 1);
-			i++;
-		}
-
-		index = j + i;
-
-		SimpleDateFormat sdf = new SimpleDateFormat("yyMMddHHmmss");
-		String dateOctect = pdu.substring(index, index + 12);
-		StringBuffer dateOk = new StringBuffer();
-		for (int x = 0; x < 12; x = x + 2)
-			dateOk.append(new char[]
-			{ dateOctect.charAt(x + 1), dateOctect.charAt(x) });
-
 		try {
-			this.dateOriginal = sdf.parse(dateOk.toString()).getTime();
-		} catch (ParseException e) {
-			this.dateOriginal = -1;
-		}
-		index += 14;
+			PduInputStream in = new PduInputStream(pdu);
+			
+			// The SMSC address.  Not used here.
+			in.readSmscAddress();
+			
+			// This byte contains header information etc. and TODO should be decoded
+			in.readByte();
+			
+			// TP-Message-Reference (TP-MR):
+			// Parameter identifying the previously submitted SMS-SUBMIT or SMS-COMMAND
+			refNo = in.read();
+			
+			// TP-Recipient-Address (TP-RA):
+			// Address of the recipient of the previously submitted mobile originated short message
+			recipient = in.readAddress();
 
-		dateOctect = pdu.substring(index, index + 12);
-		dateOk = new StringBuffer();
-		for (int x = 0; x < 12; x = x + 2)
-			dateOk.append(new char[]{dateOctect.charAt(x + 1), dateOctect.charAt(x)});
-
-		try {
-			this.dateReceived = sdf.parse(dateOk.toString()).getTime();
-		} catch (ParseException e) {
-			this.dateReceived = -1;
-		}
-		index += 14;
-
-		i = Integer.parseInt(pdu.substring(index, index + 2), 16);
-
-		switch((i >> 5) & 3) {
-			case 0:
-				messageText = "00 - Succesful Delivery.";
-				status = DeliveryStatus.Delivered;
-				break;
-			case 1:
-				messageText = "01 - Errors, will retry dispatch.";
-				status = DeliveryStatus.KeepTrying;
-				break;
-			case 2:
-				messageText = "02 - Errors, stopped retrying dispatch.";
-				status = DeliveryStatus.Aborted;
-				break;
-			case 3:
-				messageText = "03 - Errors, stopped retrying dispatch.";
-				status = DeliveryStatus.Aborted;
-				break;
+			// TP-Service-Centre-Time-Stamp (TP-SCTS):
+			// Parameter identifying time when the SC received the previously sent SMS-SUBMIT
+			// 7 octets
+			dateOriginal = in.readTimestamp();
+			
+			// TP-Discharge-Time (TP-DT):
+			// Parameter identifying the time associated with a particular TP-ST outcome
+			// 7 octets
+			dateReceived = in.readTimestamp();
+			
+			// TP-Status (TS-ST):
+			// Parameter identifying the status of the previously sent mobile originated short message
+			int i = in.readByte();
+			
+			switch((i >> 5) & 3) {
+				case 0:
+					messageText = "00 - Succesful Delivery.";
+					status = DeliveryStatus.Delivered;
+					break;
+				case 1:
+					messageText = "01 - Errors, will retry dispatch.";
+					status = DeliveryStatus.KeepTrying;
+					break;
+				case 2:
+					messageText = "02 - Errors, stopped retrying dispatch.";
+					status = DeliveryStatus.Aborted;
+					break;
+				case 3:
+					messageText = "03 - Errors, stopped retrying dispatch.";
+					status = DeliveryStatus.Aborted;
+					break;
+			}
+			
+			// TODO check if TP-UD is expected and if so read it
+			// TODO in.checkEmpty(); // N.B. this check is not applicable if TP-UD is expected
+		} catch(Exception ex) {
+			throw new MessageDecodeException("Error decoding PDU: " + pdu, ex);
 		}
 	}
 	

@@ -24,15 +24,21 @@ package org.smslib.handler;
 import java.io.IOException;
 
 import org.smslib.CService;
-import org.smslib.CService.MessageClass;
+import org.smslib.service.MessageClass;
+import org.smslib.service.Protocol;
 import org.smslib.NoResponseException;
 import org.smslib.SMSLibDeviceException;
 import org.smslib.UnrecognizedHandlerProtocolException;
 
 import org.smslib.stk.StkRequest;
 import org.smslib.stk.StkResponse;
+import org.smslib.ussd.UssdResponse;
 
 public interface ATHandler {
+	public abstract class SynchronizedWorkflow<T> {
+		public abstract T run() throws SMSLibDeviceException, IOException;
+	}
+
 	void setStorageLocations(String loc);
 
 	boolean dataAvailable() throws IOException;
@@ -156,9 +162,14 @@ public interface ATHandler {
 	 */
 	boolean supportsUcs2SmsSending();
 	
-	CService.Protocol getProtocol();
+	Protocol getProtocol();
 
 	boolean supportsStk();
 	
-	StkResponse stkRequest(StkRequest request, String... variables) throws SMSLibDeviceException;
+	/** TODO please work out what the difference between these 2 inits are AND DOCUMENT THEM */
+	void stkInit() throws SMSLibDeviceException, IOException;
+	
+	StkResponse stkRequest(StkRequest request, String... variables) throws SMSLibDeviceException, IOException;
+	
+	UssdResponse ussdRequest(String request) throws SMSLibDeviceException, IOException;
 }

@@ -1,5 +1,6 @@
 /**
- * (c) 2009 Alex Anderson, Masabi Ltd.
+ * @author Alex Anderson
+ * (c) 2009-2011 Kiwanja.net
  */
 package org.smslib.util;
 
@@ -18,6 +19,7 @@ import org.smslib.sms.SmsMessageEncoding;
  * Utilities class for generating and reading SMS Transfer protocol data units (TPDUs).
  * 
  * Methods and constants in this class were coded following the ETSI specification RTS/TSGC-0123040v830.
+ * TODO should be updated to 3GPP-TS-23.040-v10.0.0
  * 
  * TODO the abbreviate MSISDN is often used in this class, when "address" would be more appropriate - MSISDN is a specific type of address
  * 
@@ -33,7 +35,7 @@ public final class TpduUtils {
 //> [TP-MTI: TP-Message-Type-Indicator] Parameter describing the message type.
 	// bits 1-0 of the first byte of the TPDU: xxxxxxXX
 	/** Mask to extract MTI from the first byte of a TPDU */
-	public static final int TP_MTI_MASK = 0x3; // TODO this should be private
+	private static final int TP_MTI_MASK = 0x3;
 	/** 2-bit value indicating an MO message is of type SMS-DELIVER-REPORT */
 	static final int TP_MTI_MO_DELIVER_REPORT = 0x0;
 	/** 2-bit value indicating an MO message is of type SMS-SUBMIT */
@@ -45,7 +47,13 @@ public final class TpduUtils {
 	/** 2-bit value indicating an MT message is of type SMS-SUBMIT-REPORT */
 	static final int TP_MTI_MT_SUBMIT_REPORT = 0x1;
 	/** 2-bit value indicating an MT message is of type SMS-STATUS-REPORT */
-	public static final int TP_MTI_MT_STATUS_REPORT = 0x2; // TODO this should be private
+	static final int TP_MTI_MT_STATUS_REPORT = 0x2;
+	/** 2-bit value indicating an MT message is of Reserved type. 
+	 * N.B. from 3GPP-TS-23.040-v10.0.0
+	 * > If an MS receives a TPDU with a "Reserved" value in the TP-MTI it shall
+	 * > process the message as if it were an "SMS-DELIVER" but store the message
+	 * > exactly as received.*/
+	static final int TP_MTI_MT_RESERVED = 0x3;
 //> [TP-VPF: TP-Validity-Period-Format] Parameter indicating whether or not the TP-VP field is present.
 	/** Shift to insert a VPF value */
 	private static final int TP_VPF_SHIFT = 3;
@@ -371,7 +379,6 @@ public final class TpduUtils {
 	 * @return An octet to use as the data coding scheme
 	 */
 	public static final int getDcsByte(SmsMessageEncoding encoding) {
-		// FIXME should throw an exception in a public method rather than using assert
 		assert(encoding != SmsMessageEncoding.EncCustom) : "This method should not be used for custom encoding.";
 		int dcs = 0;
 		// Get the bottom 4 bits:
@@ -432,6 +439,42 @@ public final class TpduUtils {
 		return (byteZero & TpduUtils.TP_UDHI) != 0;
 	}
 	
+	public static final boolean mt_isMtiDeliver(String pdu) {
+		return mt_isMtiDeliver(HexUtils.decode(pdu));
+	}
+	public static final boolean mt_isMtiDeliver(byte[] pdu) {
+		return mt_isMtiDeliver(mt_getByteZero(pdu));
+	}
+	public static final boolean mt_isMtiDeliver(int byteZero) {
+		return (byteZero & TP_MTI_MASK) == TP_MTI_MT_DELIVER;
+	}
+
+	public static final boolean mt_isMtiReserved(String pdu) {
+		return mt_isMtiReserved(HexUtils.decode(pdu));
+	}
+	public static final boolean mt_isMtiReserved(byte[] pdu) {
+		return mt_isMtiReserved(mt_getByteZero(pdu));
+	}
+	public static final boolean mt_isMtiReserved(int byteZero) {
+		return (byteZero & TP_MTI_MASK) == TP_MTI_MT_RESERVED;
+	}
+
+	public static final boolean mt_isMtiStatusReport(String pdu) {
+		return mt_isMtiStatusReport(HexUtils.decode(pdu));
+	}
+	public static final boolean mt_isMtiStatusReport(byte[] pdu) {
+		return mt_isMtiStatusReport(mt_getByteZero(pdu));
+	}
+	public static final boolean mt_isMtiStatusReport(int byteZero) {
+		return (byteZero & TP_MTI_MASK) == TP_MTI_MT_STATUS_REPORT;
+	}
+
+	/** Skips over SMSC details and gets the first byte of an incoming PDU 
+	 * @return byte-zero of an incoming message - containing MTI, DCS etc. */
+	private static int mt_getByteZero(byte[] pdu) {
+		return pdu[pdu[0] + 1];
+	}
+
 	/**
 	 * Converts a digit String into GSM semi-octet format.  This is basically BCD,
 	 * but with the following caveats:
@@ -864,16 +907,19 @@ public final class TpduUtils {
 	 * @throws IOException 
 	 */
 	public static long decodeServiceCentreTimeStamp(PduInputStream in) throws IOException {
-		Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("GMT")); 
-		cal.set(Calendar.YEAR, decodeSemiOctetNumber(in.read()) + 2000);
-		cal.set(Calendar.MONTH, decodeSemiOctetNumber(in.read()) - 1);
-		cal.set(Calendar.DAY_OF_MONTH, decodeSemiOctetNumber(in.read()));
-		cal.set(Calendar.HOUR_OF_DAY, decodeSemiOctetNumber(in.read()));
-		cal.set(Calendar.MINUTE, decodeSemiOctetNumber(in.read()));
-		cal.set(Calendar.SECOND, decodeSemiOctetNumber(in.read()));
-		cal.set(Calendar.MILLISECOND, 0);
-		
-		long timestamp = cal.getTimeInMillis();
+		long timestamp;
+		if(true) {
+			Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("GMT")); 
+			cal.set(Calendar.YEAR, decodeSemiOctetNumber(in.read()) + 2000);
+			cal.set(Calendar.MONTH, decodeSemiOctetNumber(in.read()) - 1);
+			cal.set(Calendar.DAY_OF_MONTH, decodeSemiOctetNumber(in.read()));
+			cal.set(Calendar.HOUR_OF_DAY, decodeSemiOctetNumber(in.read()));
+			cal.set(Calendar.MINUTE, decodeSemiOctetNumber(in.read()));
+			cal.set(Calendar.SECOND, decodeSemiOctetNumber(in.read()));
+			cal.set(Calendar.MILLISECOND, 0);
+			
+			timestamp = cal.getTimeInMillis();
+		}
 		
 		/**
 		 * We now need to check the timezone this message was from.  If it was not UTC, we will have to
@@ -888,10 +934,10 @@ public final class TpduUtils {
 		 */
 		int timezoneOctet = in.read();
 		if(timezoneOctet != 0) {
-			int timeZoneDifference = getTimezoneDifference(timezoneOctet);
-			
+			long timeZoneDifference = getTimezoneDifference(timezoneOctet);
+
 			// Convert the timezone difference to milliseconds and add it to the timestamp
-			timestamp -= (timeZoneDifference * 60 * 1000);
+			timestamp -= (timeZoneDifference * 60L * 1000L);
 		}
 		
 		return timestamp;
