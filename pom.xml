@@ -127,7 +127,7 @@
 		<dependency>
 			<groupId>net.frontlinesms.core</groupId>
 			<artifactId>serial</artifactId>
-			<version>1.0.1-SNAPSHOT</version>
+			<version>1.0.1</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.commons</groupId>
@@ -136,9 +136,9 @@
 		</dependency>
 
         <dependency>
-			<groupId>net.frontlinesms.core</groupId>
+			<groupId>net.frontlinesms.test</groupId>
 			<artifactId>frontlinesms-test</artifactId>
-			<version>0.01.02-SNAPSHOT</version>
+			<version>0.1.2</version>
 			<scope>test</scope>
 	    </dependency>
 		<dependency>
