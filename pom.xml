@@ -7,19 +7,11 @@
 	<description>Fork of SMS Lib 2.? with adaptations for FrontlineSMS.  Sorry for forking :-(</description>
 	
 	<scm>
-		<!--  connection>scm:git://frontlinesms.git.sourceforge.net/gitroot/frontlinesms/smslib.git</connection>
-		<developerConnection>scm:git:ssh://${sourceforge.username}@frontlinesms.git.sourceforge.net/gitroot/FrontlineSMS-Credit/smslib</developerConnection>-->
-		
 		<connection>scm:git://github.com/frontlinesms/smslib.git</connection>
-		<developerConnection>scm:git:git@github.com:FrontlineSMS-Credit/smslib.git</developerConnection>
+		<developerConnection>scm:git:git@github.com:frontlinesms/smslib.git</developerConnection>
 	</scm>
 	
 	<repositories>
-		<repository>
-			<id>credit.frontlinesms.repo</id>
-			<name>FrontlineSMS:Credit Maven repository</name>
-			<url>http://dev.frontlinesms.com/credit/m2repo</url>
-		</repository>
 		<repository>
 			<id>frontlinesms.repo</id>
 			<name>FrontlineSMS Maven repository</name>
