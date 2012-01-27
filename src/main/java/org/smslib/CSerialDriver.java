@@ -41,7 +41,17 @@ import static org.apache.commons.lang3.StringEscapeUtils.escapeJava;
 
 public class CSerialDriver implements SerialPortEventListener {
 	/** Prints to console a selection of full lines read and written to the serial port. */
-	private static final boolean STREAM_LOGGING_ENABLED = true;
+	private static final boolean STREAM_LOGGING_ENABLED;
+	static {
+		boolean streamLoggingEnabled = false;
+		try {
+			String val = System.getProperty("smslib.streamlogging");
+			streamLoggingEnabled = Boolean.parseBoolean(val);
+		} catch(Throwable t) {
+			t.printStackTrace(System.err);
+		}
+		STREAM_LOGGING_ENABLED = streamLoggingEnabled;
+	}
 	private static final int DELAY = 500;
 	private static final int DELAY_AFTER_WRITE = 100;
 	private static final int RECV_TIMEOUT = 30 * 1000;
@@ -119,16 +129,16 @@ public class CSerialDriver implements SerialPortEventListener {
 		serialPort.setOutputBufferSize(BUFFER_SIZE);
 		serialPort.enableReceiveTimeout(RECV_TIMEOUT);
 		
-		// FIXME this line should obviously NOT be committed:
 		if(STREAM_LOGGING_ENABLED) {
 			String modemName = port.replace('/', '_');
 			PrintWriter fileLog;
 			try {
-				File f = new File(System.getProperty("user.home"), "/temp/frontlinesmsmodemlogs/" + modemName + "_" + System.currentTimeMillis() + ".log");
+				File f = new File(System.getProperty("user.home") + "/.frontlinesms/serial-logs", modemName + "_" + System.currentTimeMillis() + ".log");
+				System.out.println("Logging serial streams for " + port + " to " + f.getAbsolutePath());
 				f.getParentFile().mkdirs();
 				fileLog = new PrintWriter(f, "UTF-8");
 			} catch(Exception ex) {
-				ex.printStackTrace();
+				ex.printStackTrace(System.err);
 				throw new RuntimeException(ex);
 			}
 			inStream = new LoggingInputStream(serialPort.getInputStream(), fileLog, ">>${thread}>>TX>>${stack}>>", '\r', '\n');
