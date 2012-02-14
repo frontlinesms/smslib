@@ -136,7 +136,7 @@
 		<dependency>
 			<groupId>net.frontlinesms.test</groupId>
 			<artifactId>hayescommandset-test</artifactId>
-			<version>0.0.3-releasetest</version>
+			<version>0.0.4</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
