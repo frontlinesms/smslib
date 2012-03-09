@@ -369,12 +369,13 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 		// then
 		verifySentToModem("AT+CMEE=1",
 				"AT+STSF=1",
-				"AT+CPIN?");
+				"AT+CPIN?",
+				"AT+STGR=99");
 	}
 	
 	public void testInitStkWithPin() throws Exception {
 		// given
-		mockModemResponses("OK", "OK", "+CPIN: SIM PIN", "OK");
+		mockModemResponses("OK", "OK", "+CPIN: SIM PIN", "OK", "OK");
 		when(s.getSimPin()).thenReturn("1234");
 		
 		// when
@@ -384,7 +385,8 @@ public class CATHandler_Wavecom_StkTest extends BaseTestCase {
 		verifySentToModem("AT+CMEE=1",
 				"AT+STSF=1",
 				"AT+CPIN?",
-				"AT+CPIN=\"1234\"");
+				"AT+CPIN=\"1234\"",
+				"AT+STGR=99");
 	}
 
 	/** Verifies that a list of serial commands were sent to the modem in a specific order
