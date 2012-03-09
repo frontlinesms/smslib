@@ -76,6 +76,11 @@ public class CATHandler_Wavecom_Stk extends CATHandler_Wavecom {
 				if(isWaitingForPin(pinResponse)) {
 					enterPin(srv.getSimPin());
 				}
+				
+				// Sometimes the first command issued to a Wavecom will fail.  If we issue
+				// the command here, then hopefully all future commands *will* work :-)
+				serialSendReceive("AT+STGR=99");
+				
 				return null;
 			}
 		});
