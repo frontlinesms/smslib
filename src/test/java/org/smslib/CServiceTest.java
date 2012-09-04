@@ -6,6 +6,7 @@ package org.smslib;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.StringReader;
+import java.util.LinkedList;
 
 import org.smslib.handler.ATHandler;
 import org.smslib.util.TpduUtils;
@@ -340,28 +341,25 @@ public class CServiceTest extends BaseTestCase {
 	
 	public void testSendMessage_PDU() throws IOException, SMSLibDeviceException {
 		// Here is the same message five times with different SMSC numbers attached
-		testSendMessage_PDU("",                            "0031000AA160480173770000FF06E3777DFCAE03");
+		testSendMessage_PDU("",              "0031000AA160480173770000FF06E3777DFCAE03");
 		testSendMessage_PDU("07890123456",   "07A17098103254F631000AA160480173770000FF06E3777DFCAE03");
-		testSendMessage_PDU("0789012345",      "06A1709810325431000AA160480173770000FF06E3777DFCAE03");
+		testSendMessage_PDU("0789012345",    "06A1709810325431000AA160480173770000FF06E3777DFCAE03");
 		testSendMessage_PDU("+447890123456", "079144870921436531000AA160480173770000FF06E3777DFCAE03");
 		testSendMessage_PDU("+44789012345",  "07914487092143F531000AA160480173770000FF06E3777DFCAE03");
 	}
 	
 	public void testSendMessage_PDU(String smscNumber, String... messagePdus) throws IOException, SMSLibDeviceException {
-		ATHandler handler = mock(ATHandler.class);
-		CService service = new CService(handler);
-		
 		COutgoingMessage message = mock(COutgoingMessage.class);
 		when(message.generatePdus(eq(smscNumber), anyInt())).thenReturn(messagePdus);
 		
-		service.setSmscNumber(smscNumber);
-		service.sendMessage_PDU(message);
+		cService.setSmscNumber(smscNumber);
+		cService.sendMessage_PDU(message);
 		
 		for(String messagePdu : messagePdus) {
 			byte[] encodedSmscNumber = TpduUtils.encodeMsisdnAsAddressField(smscNumber, true);
 			int smscLengthOctets = encodedSmscNumber.length;
 			int pduLengthOctets = (messagePdu.length() / 2);
-			verify(handler).sendMessage(pduLengthOctets - smscLengthOctets, messagePdu, null, null);
+			verify(mockAtHandler).sendMessage(pduLengthOctets - smscLengthOctets, messagePdu, null, null);
 		}
 	}
 	
@@ -374,4 +372,21 @@ public class CServiceTest extends BaseTestCase {
 		
 		// TODO verify the message list contains the expected messages
 	}*/
+	
+	public void testStatusReportProcessing() throws Exception {
+		when(mockAtHandler.getStorageLocations()).thenReturn("AA");
+		final String[] PDUS = {
+				/* with SMSC */ "07A17098103254F606130C91527420121670110172111332E11101721113322100", // PDU with SMSC number
+				/* no SMSC */   "06130C91527420121670110172111332E11101721113322100", // PDU without SMSC number
+				/* no SMSC */   "06140C91527420121670110172111412E11101721114122100",
+				/* no SMSC */   "06150C91527420121670110172114413E11101721144132100" };
+		for(String pdu : PDUS) {
+			System.out.println(pdu);
+			LinkedList<CIncomingMessage> messageList = new LinkedList<CIncomingMessage>();
+			cService.createMessage(messageList, pdu, 0, 0);
+			assertEquals(1, messageList.size());
+			assertTrue(messageList.get(0) instanceof CStatusReportMessage);
+		}
+
+	}
 }

@@ -93,8 +93,8 @@ public class CService {
 	private final LinkedList<LinkedList<CIncomingMessage>> mpMsgList = new LinkedList<LinkedList<CIncomingMessage>>();
 
 	/** Constructor used for Unit Tests. */
-	CService(ATHandler atHanndler) {
-		this.atHandler = atHanndler;
+	CService(ATHandler atHandler) {
+		this.atHandler = atHandler;
 	}
 
 	/**
@@ -657,7 +657,7 @@ public class CService {
 	 * @throws MessageDecodeException 
 	 * @throws NullPointerException if the supplied PDU is <code>null</code>.
 	 */
-	private void createMessage(LinkedList<CIncomingMessage> messageList, String pdu, int memoryLocation, int memIndex) throws MessageDecodeException {
+	void createMessage(LinkedList<CIncomingMessage> messageList, String pdu, int memoryLocation, int memIndex) throws MessageDecodeException {
 		if (TpduUtils.mt_isMtiDeliver(pdu)) {
 			log.info("PDU appears to be an incoming message.  Processing accordingly.");
 			CIncomingMessage msg = new CIncomingMessage(pdu, memIndex, atHandler.getStorageLocations().substring((memoryLocation * 2), (memoryLocation * 2) + 2));
@@ -674,7 +674,14 @@ public class CService {
 			}
 		} else if (TpduUtils.mt_isMtiStatusReport(pdu)) {
 			log.info("PDU appears to be a status report.  Processing accordingly.");
-			messageList.add(new CStatusReportMessage(pdu, memIndex, atHandler.getStorageLocations().substring((memoryLocation * 2), (memoryLocation * 2) + 2)));
+			CStatusReportMessage statusReport = null;
+			try {
+				statusReport = new CStatusReportMessage(pdu, memIndex, atHandler.getStorageLocations().substring((memoryLocation * 2), (memoryLocation * 2) + 2), true);
+			} catch(MessageDecodeException ex) {
+				// if this throws an exception a second time, allow it to propagate
+				statusReport = new CStatusReportMessage(pdu, memIndex, atHandler.getStorageLocations().substring((memoryLocation * 2), (memoryLocation * 2) + 2), false);
+			}
+			messageList.add(statusReport);
 			deviceInfo.getStatistics().incTotalIn();
 		} else {
 			log.warn("Unrecognized message type; ignoring. (PDU:"+pdu+")");

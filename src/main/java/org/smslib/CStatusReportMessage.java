@@ -63,16 +63,19 @@ public class CStatusReportMessage extends CIncomingMessage {
 	 * @param pdu
 	 * @param memIndex
 	 * @param memLocation
+	 * @param checkForSmsc sometimes the PDU does not start with SMSC number.  Not sure if the
+	 *   spec allows for this or not, but it certainly happens (August 2012) on Safaricom
+	 *   Kenya, so it seems sensible to allow for it.
 	 * @throws MessageDecodeException 
 	 */
-	protected CStatusReportMessage(String pdu, int memIndex, String memLocation) throws MessageDecodeException {
+	protected CStatusReportMessage(String pdu, int memIndex, String memLocation, boolean checkForSmsc) throws MessageDecodeException {
 		super(MessageType.StatusReport, memIndex, memLocation);
 
 		try {
 			PduInputStream in = new PduInputStream(pdu);
 			
 			// The SMSC address.  Not used here.
-			in.readSmscAddress();
+			if(checkForSmsc) in.readSmscAddress();
 			
 			// This byte contains header information etc. and TODO should be decoded
 			in.readByte();

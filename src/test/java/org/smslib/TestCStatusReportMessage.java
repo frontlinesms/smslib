@@ -9,7 +9,7 @@ public class TestCStatusReportMessage extends BaseTestCase {
 	
 	public void testPduDecode() throws Exception {
 		for(String pdu : TEST_PDUS) {
-			CStatusReportMessage m = new CStatusReportMessage(pdu, 0, "");
+			CStatusReportMessage m = new CStatusReportMessage(pdu, 0, "", true);
 			
 		}
 	}
