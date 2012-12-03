@@ -37,13 +37,16 @@ public class CATHandler_Huawei extends CATHandler
 		super(serialDriver, log, srv);
 	}
 
-	
 	@Override
 	public void init() throws IOException {
 		super.init();
+
+		// Enable full functionality.  Without this, message receiving may randomly stop working.
+		serialSendReceive("AT+CFUN=1");
+		sleepWithoutInterruption(DELAY_RESET);
 		
 		serialSendReceive("AT^CURC=0");
 		serialSendReceive("AT+CLIP=1");
 	}
-
 }
+
