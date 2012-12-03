@@ -1,5 +1,11 @@
+# eclipse generated files
 .classpath
 .project
 .settings/
-target/
 bin/
+
+# maven generated files
+target/
+
+# vim temp files
+*.swp

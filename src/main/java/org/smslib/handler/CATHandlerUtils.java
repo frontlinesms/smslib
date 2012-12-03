@@ -81,6 +81,55 @@ public class CATHandlerUtils {
 		
 		return new CATHandler(serialDriver, log, srv);
 	}
+
+	public static ATHandler caseInsensitiveLoad(CSerialDriver serialDriver, Logger log, CService srv, String gsmDeviceManufacturer, String gsmDeviceModel, String catHandlerAlias) {
+		if(gsmDeviceManufacturer != null && gsmDeviceModel.length() > 0) {
+			String lowerCaseCompositeName;
+			if(gsmDeviceModel != null && gsmDeviceModel.length() > 0) {
+				// TODO check for double match
+				lowerCaseCompositeName = ("cathandler_" + gsmDeviceManufacturer + "_" + gsmDeviceModel).toLowerCase();
+				handlerClassName = getHandlerClassName(lowerCaseCompositeName);
+				if(handlerClassName != null) {
+					try {
+						return load(serialDriver, log, srv, handlerClassName);
+					} catch(Exception ex) {
+						log.info("Could not load requested handler '" + handlerClassName + "'; will try more generic version.", ex);
+					}
+				}
+			}
+
+			lowerCaseCompositeName = ("cathandler_" + gsmDeviceManufacturer).toLowerCase();
+			handlerClassName = getHandlerClassName(lowerCaseCompositeName);
+			if(handlerClassName != null) {
+				try {
+					return load(serialDriver, log, srv, handlerClassName);
+				} catch(Exception ex) {
+					log.info("Could not load requested handler '" + handlerClassName + "'; will try more generic version.", ex);
+				}
+			}
+		}
+
+		return new CATHandler(serialDriver, log, srv);
+	}
+
+	/**
+	 * Attempt to get a fully-qualified handler class name with the correct case
+	 * from the lower-case version of the simple name of that class.
+	 * @param lowerCaseName the name in lowercase
+	 * @return the name in correct case, or <code>null</code> if there was no match.
+	 */
+	private static String getHandlerClassName(String lowerCaseName) {
+		Class[] handlers = getHandlers();
+		for(int i=0; i<handlers.length; ++i) {
+			Class<?> c = handlers[i];
+			String className = handlers[i].getName();
+			if(c.getSimpleName().toLowerCase().equals(lowerCaseName)) {
+				return c.getName();
+			}
+		}
+		return null;
+	}
+
 	
 	/** List of all AT handler classes */
 	@SuppressWarnings("rawtypes")
