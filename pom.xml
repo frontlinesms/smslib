@@ -3,7 +3,7 @@
 	<groupId>net.frontlinesms.core</groupId>
 	<artifactId>smslib</artifactId>
 	<name>SMS Lib</name>
-	<version>1.1.4-SNAPSHOT</version>
+	<version>1.1.4</version>
 	<description>Fork of SMS Lib 2.? with adaptations for FrontlineSMS.  Sorry for forking :-(</description>
 	
 	<scm>
