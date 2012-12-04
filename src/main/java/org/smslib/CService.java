@@ -97,15 +97,21 @@ public class CService {
 		this.atHandler = atHandler;
 	}
 
+	public CService(String port, int baud, String gsmDeviceManufacturer, String gsmDeviceModel, String catHandlerAlias) {
+		this(port, baud, gsmDeviceManufacturer, gsmDeviceModel, catHandlerAlias, false);
+	}
+
 	/**
 	 * CService constructor.
 	 * @param port The comm port to use (i.e. COM1, /dev/ttyS1 etc).
 	 * @param baud The baud rate. 57600 is a good number to start with.
 	 * @param gsmDeviceManufacturer The manufacturer of the modem (i.e. Wavecom, Nokia, Siemens, etc).
 	 * @param gsmDeviceModel The model (i.e. M1306B, 6310i, etc).
-	 * @param catHandlerAlias TODO
+	 * @param catHandlerAlias direct handler name to match
+	 * @param caseInsensitiveHandlerMatch <code>true</code> if the handler name should be matched regardless of case; <code>false</code>
+	 * 	if the handler name should be matched exactly.
 	 */
-	public CService(String port, int baud, String gsmDeviceManufacturer, String gsmDeviceModel, String catHandlerAlias) {
+	public CService(String port, int baud, String gsmDeviceManufacturer, String gsmDeviceModel, String catHandlerAlias, boolean caseInsensitiveHandlerMatch) {
 		smscNumber = "";
 
 		serialDriver = new CSerialDriver(port, baud, this);
@@ -113,8 +119,15 @@ public class CService {
 		log.info("Using port: " + port + " @ " + baud + " baud.");
 
 		try {
-			atHandler = CATHandlerUtils.load(serialDriver, log, this,
-					gsmDeviceManufacturer, gsmDeviceModel, catHandlerAlias);
+			if(caseInsensitiveHandlerMatch) {
+				atHandler = CATHandlerUtils.caseInsensitiveLoad(
+						serialDriver, log, this,
+						gsmDeviceManufacturer, gsmDeviceModel, catHandlerAlias);
+			} else {
+				atHandler = CATHandlerUtils.load(
+						serialDriver, log, this,
+						gsmDeviceManufacturer, gsmDeviceModel, catHandlerAlias);
+			}
 			log.info("Using " + atHandler.getClass().getName());
 		} catch (Exception ex) {
 			log.fatal("CANNOT INITIALIZE HANDLER (" + ex.getMessage() + ")");
