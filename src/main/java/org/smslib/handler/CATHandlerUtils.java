@@ -83,11 +83,25 @@ public class CATHandlerUtils {
 	}
 
 	public static ATHandler caseInsensitiveLoad(CSerialDriver serialDriver, Logger log, CService srv, String gsmDeviceManufacturer, String gsmDeviceModel, String catHandlerAlias) {
-		if(gsmDeviceManufacturer != null && gsmDeviceModel.length() > 0) {
-			String lowerCaseCompositeName;
+		final String BASE_HANDLER = "cathandler";
+		String lowerCaseCompositeName;
+		String handlerClassName;
+		if(catHandlerAlias != null && catHandlerAlias.length() > 0) {
+			lowerCaseCompositeName = (BASE_HANDLER + "_" + catHandlerAlias).toLowerCase();
+			handlerClassName = getHandlerClassName(lowerCaseCompositeName);
+			if(handlerClassName != null) {
+				try {
+					return load(serialDriver, log, srv, handlerClassName);
+				} catch(Exception ex) {
+					log.info("Could not load requested handler '" + handlerClassName + "'; will try more generic version.", ex);
+				}
+			}
+		}
+
+		if(gsmDeviceManufacturer != null && gsmDeviceManufacturer.length() > 0) {
 			if(gsmDeviceModel != null && gsmDeviceModel.length() > 0) {
 				// TODO check for double match
-				lowerCaseCompositeName = ("cathandler_" + gsmDeviceManufacturer + "_" + gsmDeviceModel).toLowerCase();
+				lowerCaseCompositeName = (BASE_HANDLER + "_" + gsmDeviceManufacturer + "_" + gsmDeviceModel).toLowerCase();
 				handlerClassName = getHandlerClassName(lowerCaseCompositeName);
 				if(handlerClassName != null) {
 					try {
@@ -98,7 +112,7 @@ public class CATHandlerUtils {
 				}
 			}
 
-			lowerCaseCompositeName = ("cathandler_" + gsmDeviceManufacturer).toLowerCase();
+			lowerCaseCompositeName = (BASE_HANDLER + "_" + gsmDeviceManufacturer).toLowerCase();
 			handlerClassName = getHandlerClassName(lowerCaseCompositeName);
 			if(handlerClassName != null) {
 				try {
